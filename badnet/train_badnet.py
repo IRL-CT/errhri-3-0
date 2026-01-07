@@ -46,6 +46,11 @@ def parse_args():
     parser.add_argument("--kernel_size", type=int, default=4, help="Kernel size for conv layers")
     parser.add_argument("--base_filters", type=int, default=16, help="Base number of filters")
     parser.add_argument("--learning_rate", type=float, default=0.0001, help="Learning rate")
+    parser.add_argument("--model_type", type=str, default="original",
+                        choices=["original", "simple", "pretrained_resnet18", "pretrained_resnet34", "pretrained_resnet50"],
+                        help="Model architecture type")
+    parser.add_argument("--freeze_backbone", action="store_true", help="Freeze pretrained backbone")
+    parser.add_argument("--dropout", type=float, default=0.5, help="Dropout rate for pretrained models")
     
     # Training parameters
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size")
@@ -61,6 +66,8 @@ def parse_args():
     # Data format
     parser.add_argument("--use_npy", action="store_true", help="Use NPY files instead of JPG")
     parser.add_argument("--use_weighted_loss", default=False, action="store_true", help="Use weighted loss function")
+    parser.add_argument("--num_augmentations", type=int, default=0, help="Number of augmentations per image")
+    parser.add_argument("--cache_images", action="store_true", help="Cache images in memory for faster loading")
 
     # Other
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
