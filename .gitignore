@@ -68,7 +68,8 @@ datasets/
 checkpoints/
 output/
 results/
-badnet/badnet.sub
+./badnet/badnet.sub
+*.sub
 
 # SLURM
 *.out
