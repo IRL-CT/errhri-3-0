@@ -74,3 +74,4 @@ results/
 # SLURM
 *.out
 *.err
+*.sub
