@@ -224,6 +224,8 @@ class BadNetDatasetNPY(Dataset):
         self.cache_images = cache_images
         self.image_cache = {}
         self.labels = []  # Store labels for each sample
+        self.participant_ids = []  # Store participant IDs for temporal analysis
+        self.video_ids = []  # Store video/question IDs for temporal analysis
 
         # Load label mapping from CSV
         self.label_mapping = load_label_mapping(csv_path)
@@ -273,11 +275,15 @@ class BadNetDatasetNPY(Dataset):
                     # Add original sample
                     self.samples.append((npy_path, label, False))
                     self.labels.append(label)
+                    self.participant_ids.append(participant)  # Track participant ID
+                    self.video_ids.append(q_id)  # Track video/question ID
                     
                     # Add augmented samples
                     for _ in range(num_augmentations):
                         self.samples.append((npy_path, label, True))
                         self.labels.append(label)
+                        self.participant_ids.append(participant)  # Track participant ID for augmented samples
+                        self.video_ids.append(q_id)  # Track video/question ID for augmented samples
 
         if cache_images:
             print("Caching NPY arrays in memory...")
@@ -314,6 +320,14 @@ class BadNetDatasetNPY(Dataset):
                 img_tensor = torch.flip(img_tensor, [2])  # Flip width dimension
         
         return img_tensor, label
+    
+    def get_metadata(self, idx):
+        """Get participant and video IDs for a sample (used for temporal analysis)."""
+        return {
+            'participant_id': self.participant_ids[idx],
+            'video_id': self.video_ids[idx],
+            'label': self.labels[idx]
+        }
 
 
 class BadNetCNN(nn.Module):

@@ -68,6 +68,10 @@ def parse_args():
     parser.add_argument("--use_weighted_loss", default=False, action="store_true", help="Use weighted loss function")
     parser.add_argument("--num_augmentations", type=int, default=0, help="Number of augmentations per image")
     parser.add_argument("--cache_images", action="store_true", help="Cache images in memory for faster loading")
+    
+    # Temporal analysis parameters
+    parser.add_argument("--window_size", type=int, default=5, help="Window size for temporal analysis")
+    parser.add_argument("--slide_length", type=int, default=1, help="Slide length for temporal analysis")
 
     # Other
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
@@ -81,13 +85,27 @@ def parse_args():
     return parser.parse_args()
 
 
-def evaluate_model(model, dataloader, device, num_classes=2):
-    """Evaluate model and return metrics."""
+def evaluate_model(model, dataloader, device, num_classes=2, window_size=5, slide_length=1):
+    """
+    Evaluate model and return comprehensive metrics including AUC and temporal analysis.
+    
+    Args:
+        model: Trained model
+        dataloader: DataLoader for evaluation
+        device: Torch device
+        num_classes: Number of classes
+        window_size: Window size for temporal analysis
+        slide_length: Slide length for temporal analysis
+    
+    Returns:
+        dict: Comprehensive metrics including basic metrics, AUC, and temporal analysis
+    """
     model.eval()
     all_preds, all_labels, all_probs = [], [], []
+    all_participant_ids, all_video_ids = [], []
     
     with torch.no_grad():
-        for inputs, labels in dataloader:
+        for batch_idx, (inputs, labels) in enumerate(dataloader):
             inputs = inputs.to(device)
             outputs = model(inputs)
             probs = torch.softmax(outputs, dim=1)
@@ -96,38 +114,82 @@ def evaluate_model(model, dataloader, device, num_classes=2):
             all_preds.extend(predicted.cpu().numpy())
             all_labels.extend(labels.numpy())
             all_probs.extend(probs.cpu().numpy())
+            
+            # Collect metadata for temporal analysis (if available)
+            if hasattr(dataloader.dataset, 'get_metadata'):
+                batch_size = inputs.size(0)
+                start_idx = batch_idx * dataloader.batch_size
+                
+                for i in range(batch_size):
+                    sample_idx = start_idx + i
+                    if sample_idx < len(dataloader.dataset):
+                        metadata = dataloader.dataset.get_metadata(sample_idx)
+                        all_participant_ids.append(metadata['participant_id'])
+                        all_video_ids.append(metadata['video_id'])
     
     all_preds = np.array(all_preds)
     all_labels = np.array(all_labels)
     all_probs = np.array(all_probs)
     
-    # Get metrics using get_test_metrics (with tolerance)
-    metrics = get_test_metrics(all_preds, all_labels, tolerance=1)
+    # Prepare metadata arrays for temporal analysis
+    participant_ids = np.array(all_participant_ids) if all_participant_ids else None
+    video_ids = np.array(all_video_ids) if all_video_ids else None
     
-    # Add kappa and confusion matrix
+    # Get comprehensive metrics using enhanced get_test_metrics function
+    metrics = get_test_metrics(
+        y_pred=all_preds, 
+        y_true=all_labels, 
+        tolerance=1,
+        y_proba=all_probs,
+        participant_ids=participant_ids,
+        video_ids=video_ids,
+        window_size=window_size,
+        slide_length=slide_length
+    )
+    
+    # Add kappa and confusion matrix (from sklearn)
+    from sklearn.metrics import cohen_kappa_score, confusion_matrix
     kappa = cohen_kappa_score(all_labels, all_preds)
     conf_matrix = confusion_matrix(all_labels, all_preds)
     
     metrics['kappa'] = kappa
     metrics['confusion_matrix'] = conf_matrix
-    metrics['predictions'] = all_preds
-    metrics['labels'] = all_labels
-    metrics['probabilities'] = all_probs
     
-    # Print results
-    print("\nModel Evaluation Metrics:")
-    print(f"Accuracy:  {metrics['test_accuracy']:.4f}")
-    print(f"Precision: {metrics['test_precision']:.4f}")
-    print(f"Recall:    {metrics['test_recall']:.4f}")
-    print(f"F1 Score:  {metrics['test_f1']:.4f}")
-    print(f"Cohen's Kappa: {kappa:.4f}")
-    print(f"\nTolerant Metrics (tolerance=1):")
-    print(f"Accuracy:  {metrics['test_accuracy_tolerant']:.4f}")
-    print(f"Precision: {metrics['test_precision_tolerant']:.4f}")
-    print(f"Recall:    {metrics['test_recall_tolerant']:.4f}")
-    print(f"F1 Score:  {metrics['test_f1_tolerant']:.4f}")
-    print("\nConfusion Matrix:")
+    # Print comprehensive results
+    print("\n" + "=" * 80)
+    print("COMPREHENSIVE MODEL EVALUATION METRICS")
+    print("=" * 80)
+    
+    print("\n1. BASIC METRICS:")
+    print(f"   Accuracy:  {metrics['test_accuracy']:.4f}")
+    print(f"   Precision: {metrics['test_precision']:.4f}")
+    print(f"   Recall:    {metrics['test_recall']:.4f}")
+    print(f"   F1 Score:  {metrics['test_f1']:.4f}")
+    print(f"   Cohen's Kappa: {kappa:.4f}")
+    
+    if metrics.get('test_auc') is not None:
+        print(f"   AUC:       {metrics['test_auc']:.4f}")
+    
+    print("\n2. TOLERANT METRICS (tolerance=1):")
+    print(f"   Accuracy:  {metrics['test_accuracy_tolerant']:.4f}")
+    print(f"   Precision: {metrics['test_precision_tolerant']:.4f}")
+    print(f"   Recall:    {metrics['test_recall_tolerant']:.4f}")
+    print(f"   F1 Score:  {metrics['test_f1_tolerant']:.4f}")
+    
+    # Print temporal analysis results if available
+    if 'video_level_accuracy' in metrics:
+        print("\n3. TEMPORAL WINDOW ANALYSIS:")
+        print(f"   Window size: {window_size}, Slide length: {slide_length}")
+        print(f"   Videos analyzed: {metrics['total_videos']}")
+        print(f"   Video-level accuracy: {metrics['video_level_accuracy']:.4f}")
+        print(f"   Avg window accuracy: {metrics['avg_window_accuracy']:.4f}")
+        print(f"   Avg detection time: {metrics['avg_detection_time_windows']:.1f} windows")
+        print(f"   Avg detection percentage: {metrics['avg_detection_percentage']:.1f}%")
+        print(f"   Videos never detected: {metrics['never_detected_count']}/{metrics['total_videos']}")
+    
+    print("\n4. CONFUSION MATRIX:")
     print(conf_matrix)
+    print("=" * 80)
 
     return metrics
 
@@ -151,7 +213,7 @@ def main():
             "learning_rate": {"values": [0.0001, 0.001, 0.00001]},
             "batch_size": {"values": [16, 32, 64]},
             "seed": {"values": [42, 1369]},
-            "epochs": {"values": [100]},
+            "epochs": {"values": [100, 200, 350]},
             "num_folds": {"values": [5]},
             "csv_path": {"values": [args.csv_path]},
             "npy_base_path": {"values": [args.npy_base_path]},
@@ -165,6 +227,8 @@ def main():
             "use_npy": {"values": [True]},
             "cache_images": {"values": [True]},
             "use_weighted_loss": {"values": [True, False]},
+            "window_size": {"values": [5, 10, 15]},
+            "slide_length": {"values": [1, 2, 3]},
         },
     }
     
@@ -299,11 +363,16 @@ def main():
                         
             # Evaluate on validation set
             print(f"\nFinal evaluation on validation set...")
-            metrics = evaluate_model(model, val_loader, device, num_classes=num_classes)
+            metrics = evaluate_model(
+                model, val_loader, device, 
+                num_classes=num_classes,
+                window_size=args.window_size,
+                slide_length=args.slide_length
+            )
             all_val_metrics.append(metrics)
             
             # Log validation metrics to W&B
-            wandb.log({
+            wandb_metrics = {
                 f'fold_{fold_idx}_val_accuracy': metrics['test_accuracy'],
                 f'fold_{fold_idx}_val_precision': metrics['test_precision'],
                 f'fold_{fold_idx}_val_recall': metrics['test_recall'],
@@ -313,7 +382,23 @@ def main():
                 f'fold_{fold_idx}_val_recall_tolerant': metrics['test_recall_tolerant'],
                 f'fold_{fold_idx}_val_f1_tolerant': metrics['test_f1_tolerant'],
                 f'fold_{fold_idx}_val_kappa': metrics['kappa']
-            })
+            }
+            
+            # Add AUC if available
+            if metrics.get('test_auc') is not None:
+                wandb_metrics[f'fold_{fold_idx}_val_auc'] = metrics['test_auc']
+            
+            # Add temporal analysis metrics if available
+            if 'video_level_accuracy' in metrics:
+                wandb_metrics.update({
+                    f'fold_{fold_idx}_video_level_accuracy': metrics['video_level_accuracy'],
+                    f'fold_{fold_idx}_avg_window_accuracy': metrics['avg_window_accuracy'],
+                    f'fold_{fold_idx}_avg_detection_time_windows': metrics['avg_detection_time_windows'],
+                    f'fold_{fold_idx}_avg_detection_percentage': metrics['avg_detection_percentage'],
+                    f'fold_{fold_idx}_never_detected_count': metrics['never_detected_count']
+                })
+            
+            wandb.log(wandb_metrics)
             
             # Log prediction probabilities
             probs_df = pd.DataFrame(metrics['probabilities'])
@@ -337,35 +422,64 @@ def main():
             print("SUMMARY ACROSS ALL FOLDS")
             print(f"{'='*60}")
             
+            # Basic metrics
             avg_accuracy = np.mean([m['test_accuracy'] for m in all_val_metrics])
             avg_precision = np.mean([m['test_precision'] for m in all_val_metrics])
             avg_recall = np.mean([m['test_recall'] for m in all_val_metrics])
             avg_f1 = np.mean([m['test_f1'] for m in all_val_metrics])
             avg_kappa = np.mean([m['kappa'] for m in all_val_metrics])
             
+            # Tolerant metrics
             avg_accuracy_tol = np.mean([m['test_accuracy_tolerant'] for m in all_val_metrics])
             avg_precision_tol = np.mean([m['test_precision_tolerant'] for m in all_val_metrics])
             avg_recall_tol = np.mean([m['test_recall_tolerant'] for m in all_val_metrics])
             avg_f1_tol = np.mean([m['test_f1_tolerant'] for m in all_val_metrics])
             
+            # Standard deviations
             std_accuracy = np.std([m['test_accuracy'] for m in all_val_metrics])
             std_f1 = np.std([m['test_f1'] for m in all_val_metrics])
             std_accuracy_tol = np.std([m['test_accuracy_tolerant'] for m in all_val_metrics])
             std_f1_tol = np.std([m['test_f1_tolerant'] for m in all_val_metrics])
             
+            # AUC metrics (if available)
+            auc_scores = [m.get('test_auc') for m in all_val_metrics if m.get('test_auc') is not None]
+            avg_auc = np.mean(auc_scores) if auc_scores else None
+            std_auc = np.std(auc_scores) if auc_scores else None
+            
+            # Temporal analysis metrics (if available)
+            video_acc_scores = [m.get('video_level_accuracy') for m in all_val_metrics if 'video_level_accuracy' in m]
+            avg_video_acc = np.mean(video_acc_scores) if video_acc_scores else None
+            
+            window_acc_scores = [m.get('avg_window_accuracy') for m in all_val_metrics if 'avg_window_accuracy' in m]
+            avg_window_acc = np.mean(window_acc_scores) if window_acc_scores else None
+            
+            detection_times = [m.get('avg_detection_time_windows') for m in all_val_metrics if 'avg_detection_time_windows' in m]
+            avg_detection_time = np.mean(detection_times) if detection_times else None
+            
+            print(f"Basic Metrics:")
             print(f"Validation Accuracy:  {avg_accuracy:.4f} ± {std_accuracy:.4f}")
             print(f"Validation Precision: {avg_precision:.4f}")
             print(f"Validation Recall:    {avg_recall:.4f}")
             print(f"Validation F1 Score:  {avg_f1:.4f} ± {std_f1:.4f}")
             print(f"Validation Kappa:     {avg_kappa:.4f}")
+            
+            if avg_auc is not None:
+                print(f"Validation AUC:       {avg_auc:.4f} ± {std_auc:.4f}")
+            
             print(f"\nTolerant Metrics:")
             print(f"Accuracy (tol):  {avg_accuracy_tol:.4f} ± {std_accuracy_tol:.4f}")
             print(f"Precision (tol): {avg_precision_tol:.4f}")
             print(f"Recall (tol):    {avg_recall_tol:.4f}")
             print(f"F1 Score (tol):  {avg_f1_tol:.4f} ± {std_f1_tol:.4f}")
             
+            if avg_video_acc is not None:
+                print(f"\nTemporal Analysis:")
+                print(f"Video-level accuracy: {avg_video_acc:.4f}")
+                print(f"Window accuracy:      {avg_window_acc:.4f}")
+                print(f"Avg detection time:   {avg_detection_time:.1f} windows")
+                
             # Log average metrics to W&B
-            wandb.log({
+            wandb_summary = {
                 'avg_val_accuracy': avg_accuracy,
                 'avg_val_precision': avg_precision,
                 'avg_val_recall': avg_recall,
@@ -379,19 +493,25 @@ def main():
                 'std_val_f1': std_f1,
                 'std_val_accuracy_tolerant': std_accuracy_tol,
                 'std_val_f1_tolerant': std_f1_tol
-            })
+            }
             
-            wandb.run.summary.update({
-                'avg_val_accuracy': avg_accuracy,
-                'avg_val_precision': avg_precision,
-                'avg_val_recall': avg_recall,
-                'avg_val_f1': avg_f1,
-                'avg_val_kappa': avg_kappa,
-                'avg_val_accuracy_tolerant': avg_accuracy_tol,
-                'avg_val_precision_tolerant': avg_precision_tol,
-                'avg_val_recall_tolerant': avg_recall_tol,
-                'avg_val_f1_tolerant': avg_f1_tol
-            })
+            # Add AUC to summary if available
+            if avg_auc is not None:
+                wandb_summary.update({
+                    'avg_val_auc': avg_auc,
+                    'std_val_auc': std_auc
+                })
+            
+            # Add temporal metrics to summary if available
+            if avg_video_acc is not None:
+                wandb_summary.update({
+                    'avg_video_level_accuracy': avg_video_acc,
+                    'avg_window_accuracy': avg_window_acc,
+                    'avg_detection_time': avg_detection_time
+                })
+            
+            wandb.log(wandb_summary)
+            wandb.run.summary.update(wandb_summary)
         
         wandb.finish()
     
