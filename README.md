@@ -1,20 +1,20 @@
-# ERRHRI 3.0: Challenge Repository
+# ERR@HRI 3.0: Multimodal Detection of Errors and Anticipation in Human-Robot Interactions
 
-This is the official repository for the **ERRHRI 3.0 Challenge** (3rd edition of the Evaluating Robot misbehavior in Robot-Human Interaction challenge). Participants will find everything needed to get started: dataset access, evaluation scripts, and the baseline implementation.
+Official repository for the **ERR@HRI 3.0 Challenge** at [ICMI 2026](https://icmi.acm.org/2026/) (5–9 October, Napoli, Italy). Participants will find everything needed to get started: dataset access, evaluation scripts, and the baseline implementation.
 
-> **Challenge website:** _[link TBD]_
+> **Challenge website:** _[TBD]_
 > **Contact:** _[email TBD]_
 
 ---
 
 ## Organizer TODO
 
-- [ ] Website update and maintenance
+- [ ] Website update and maintenance (Teresa)
 - [ ] Share Call for Participation (CfP)
-- [ ] Create/finalize this repository
-- [ ] Organize dataset and EULA/data agreement ("participant package")
-- [ ] Create evaluation scripts
-- [ ] Train and document baseline
+- [ ] Repo maintenance (Teresa)
+- [ ] Organize dataset and EULA/data agreement ("participant package") (Teresa)
+- [ ] Create evaluation scripts (volunteer?)
+- [ ] Train and document baseline (volunteer?)
 - [ ] _(later)_ Verify participants' submissions
 - [ ] _(later)_ Draft challenge paper
 
@@ -22,190 +22,153 @@ This is the official repository for the **ERRHRI 3.0 Challenge** (3rd edition of
 
 ## Challenge Overview
 
-ERRHRI 3.0 is a shared task challenge focused on **detecting and classifying robot misbehavior from visual data**. Given video frames of robot-human interaction scenarios, participants develop systems that can identify whether robot behavior is appropriate or problematic — and to what degree.
+ERR@HRI 3.0 addresses the problem of **multimodal error detection in human-robot interaction** by providing two complementary datasets that span the temporal spectrum of error management — from anticipatory responses *before* failures occur to reactive responses *during* observed errors.
 
-This challenge builds on the BadRobotsIRL series and pushes towards more robust, generalizable methods for automated robot behavior assessment.
+Building on ERR@HRI 2024 (ICMI'24) and ERR@HRI 2.0 (ACM MM'25), this third edition takes a key step forward: rather than pre-extracted features, participants receive **raw, non-anonymized video data** collected in naturalistic, crowdsourced settings. This enables end-to-end learning approaches and exposes models to the variability characteristic of real-world deployments (diverse lighting, camera angles, participant positioning, and environmental contexts).
 
-### Task
+### Challenge Goals
 
-Given a sequence of video frames from a robot-human interaction scenario, classify the robot's behavior according to a predefined label set. Evaluation is based on frame-level predictions aggregated across participants and scenarios.
-
-### Data
-
-The dataset consists of video frames from recorded robot-human interaction sessions, organized by participant and scenario (`q_id`). Labels are provided in CSV format.
-
-- **Format:** PNG frames (naming: `q_{id}_main_{label}_30fps_frame{number}.png`)
-- **Splits:** Train/val and held-out test set
-- **Access:** Dataset is distributed as part of the participant package — see [Registration & Data Access](#registration--data-access)
-
-### Evaluation
-
-Systems are evaluated using:
-- Macro F1-score (primary metric)
-- Tolerance-1 accuracy (for ordinal labels)
-- Cohen's Kappa
-
-Evaluation scripts will be released in this repository — see [Evaluation](#evaluation).
-
-### Timeline
-
-| Milestone | Date |
-|---|---|
-| CfP released | _TBD_ |
-| Participant package available | _TBD_ |
-| Evaluation scripts released | _TBD_ |
-| System submission deadline | _TBD_ |
-| Results announced | _TBD_ |
-| Challenge paper deadline | _TBD_ |
+- Advance multimodal error detection through end-to-end learning from raw visual data
+- Promote development of robust models that handle naturalistic data variability
+- Explore the relationship between anticipatory and reactive error responses
+- Establish benchmarks for generalizable error detection across contexts and temporal stages
+- Foster community development of open, reproducible error detection methods
 
 ---
 
-## Registration & Data Access
+## Datasets
 
-To participate and receive the dataset:
+ERR@HRI 3.0 provides two complementary datasets, both collected via crowdsourcing (Prolific) as raw audiovisual webcam recordings (`.mp4`). Neither dataset is anonymized.
 
-1. Register via the challenge website: _[link TBD]_
-2. Sign and return the EULA/data agreement
-3. You will receive a download link for the participant package
+| Characteristic | BAD Dataset | Bad Idea Dataset |
+|---|---|---|
+| Participants | 45 | 29 |
+| Total recordings | 2,054 videos | 951 videos |
+| Total duration | 36,650 s | 1,851 s |
+| Temporal focus | During failure | Before failure |
+| Error type | Observed failures | Anticipated outcomes |
+
+### BAD (Bystander Affect Detection) Dataset
+
+Webcam recordings of **45 participants'** spontaneous facial reactions while watching **46 robot and human failure scenarios** (average clip: ~17.8 s). Stimuli videos are also provided (46 `.mp4` files).
+
+**Labels:** Binary — `Failure` (human or robot failure scenario) vs. `Control` (no failure, 6 videos).
+
+### Bad Idea Dataset
+
+Webcam recordings of **29 participants'** anticipatory reactions while predicting whether **30 action scenarios** would end well or poorly — captured *before* outcomes were revealed (average clip: ~1.95 s). Stimuli videos also provided (30 `.mp4` files).
+
+**Labels:** Binary — participant's *predicted* outcome: `Well` (good outcome expected) vs. `Poorly` (bad outcome expected). Labels reflect participant prediction, not actual outcome. Data is mostly balanced (1.15 good-to-bad ratio).
+
+---
+
+## Challenge Tracks
+
+### Track 1: Bystander Reaction Detection (BAD Dataset)
+Binary classification of whether the participant is observing a **failure vs. control** scenario.
+
+### Track 2: Anticipatory Response Prediction (Bad Idea Dataset)
+Binary classification of participants' **predicted outcome** (well/poorly) from their anticipatory facial behavior.
+
+### Cross-Dataset Generalization _(Optional)_
+Participants are encouraged to explore transfer learning across datasets (e.g., train on BAD, test on Bad Idea). Evaluated separately with its own award.
 
 ---
 
 ## Evaluation
 
-Evaluation scripts will be released here before the submission deadline. They will be runnable against your predictions CSV as follows:
+Models are evaluated on multiple metrics:
 
-```bash
-python evaluate.py --predictions predictions.csv --labels test_labels.csv
-```
+- **Offline:** F1-score (primary), Accuracy, AUC
+- **Windowed predictions:** Fixed-length sliding windows; a video is correctly classified if *any* window predicts the correct label
+- **Earliest Detection Time:** For correctly classified videos, percentage of video elapsed before first correct prediction (lower is better)
+- **False Negative Rate per video:** Count of windows that "miss" positive predictions in error/bad-outcome videos
 
-_Scripts are under development — check back for updates._
+Teams are ranked separately per track based on F1-score. Winners selected for: Track 1, Track 2, Best Overall Performance, and Best Cross-Dataset Generalization.
+
+Evaluation scripts will be released in this repository by **May 1, 2026**.
+
+---
+
+## Timeline
+
+| Date | Milestone |
+|---|---|
+| March 1, 2026 | Challenge announcement and call for participation |
+| March 15, 2026 | Registration opens; training and validation data released |
+| May 1, 2026 | Baseline models and evaluation scripts released |
+| June 1, 2026 | Test data released (without labels) |
+| June 15, 2026 | Submission deadline for predictions |
+| June 22, 2026 | Paper submission deadline |
+| July 15, 2026 | Notification of acceptance |
+| August 6, 2026 | Camera-ready papers due |
+| October 5, 2026 | Challenge workshop at ICMI 2026, Napoli, Italy |
+
+---
+
+## Registration & Data Access
+
+The datasets contain non-anonymized visual data. To receive access, participants must:
+
+1. Register via the challenge website: _[link TBD]_
+2. Read and sign the **EULA** (End User License Agreement)
+3. Receive dataset download link
+
+**Data usage terms include:** no redistribution rights; datasets may only be used for this challenge; no use to defame participants; proper data security measures required.
+
+Each team may submit up to **3 times** on the test set. Participating teams must submit a short paper describing their approach (ICMI 2026 template). Code release is strongly encouraged. All accepted papers will be published in the ACM ICMI 2026 proceedings.
 
 ---
 
 ## Baseline
 
-This repository includes a full baseline implementation using the **BadNet** convolutional neural network architecture (PyTorch). The baseline serves as a reference point and starting template for participants.
+A baseline implementation is provided in the [`badnet/`](badnet/) directory. See [BASELINE.md](BASELINE.md) for full documentation, quick-start instructions, and results.
 
-### Baseline Results
+_Baseline results to be added by May 1, 2026._
 
-_To be filled in once baseline training is complete._
+---
 
-### Repository Structure
+## Repository Structure
 
 ```
 ├── badnet/                     # Baseline implementation
 │   ├── badnet_pytorch.py      # Core models and dataset classes
-│   ├── train_badnet.py        # Training script with W&B integration
+│   ├── train_badnet.py        # Training script
 │   ├── get_metrics.py         # Evaluation metrics
 │   ├── create_image_splits.py # Data splitting utilities
 │   ├── resize_dataset.py      # Dataset preprocessing
 │   └── badnet.sub             # SLURM submission script
-└── challenge_proposal.pdf     # Challenge proposal document
+├── BASELINE.md                # Baseline documentation
+├── challenge_proposal.pdf     # Challenge proposal (Parreira et al., ICMI'26)
+└── LICENSE
 ```
 
-### Models
+---
 
-- **BadNetCNN**: Original BadNet architecture with configurable parameters
-- **BadNetPretrained**: Transfer learning using ResNet/EfficientNet backbones
-- **BadNetSimple**: Lightweight architecture for faster iteration
+## Organizers
 
-### Quick Start
-
-**1. Environment setup**
-```bash
-pip install torch torchvision numpy pandas scikit-learn pillow wandb tqdm
-```
-
-**2. Data preparation**
-
-Organize your data as follows:
-```
-data_badidea/
-├── trainval/
-│   ├── label_data.csv
-│   ├── participant_1/
-│   │   ├── q_1_main_0_30fps_frame0001.png
-│   │   └── ...
-│   └── ...
-└── test/
-    ├── test_label_data.csv
-    └── ...
-```
-
-**3. Train the baseline**
-```bash
-cd badnet
-python train_badnet.py --csv_path ../../data_badidea/trainval/label_data.csv \
-                       --image_base_path ../../data_badidea/trainval \
-                       --epochs 100 \
-                       --batch_size 32
-```
-
-**4. Faster training with NPY format**
-
-First preprocess images:
-```bash
-python resize_dataset.py
-```
-
-Then train:
-```bash
-python train_badnet.py --csv_path ../../data_badidea/trainval/label_data.csv \
-                       --npy_base_path ../../trainval_npy \
-                       --use_npy \
-                       --epochs 100
-```
-
-### Key Training Options
-
-| Parameter | Description | Default |
-|---|---|---|
-| `--model_type` | `original`, `simple`, `pretrained_resnet18`, `pretrained_resnet34` | `original` |
-| `--learning_rate` | Learning rate | `0.0001` |
-| `--batch_size` | Batch size | `64` |
-| `--epochs` | Max training epochs | `100` |
-| `--patience` | Early stopping patience | — |
-| `--num_folds` | Cross-validation folds | `5` |
-| `--use_npy` | Use pre-processed NPY files | `False` |
-| `--use_weighted_loss` | Handle class imbalance | `False` |
-
-### Data Format
-
-**CSV labels** — required columns:
-- `participant_id`: Unique participant identifier
-- `q_id`: Scenario identifier (e.g., `q_1`, `q_2`)
-- `label`: Target classification label
-
-**Image naming:** `q_{id}_main_{label}_30fps_frame{number}.png`
-Example: `q_6_main_1_30fps_frame0011.png`
-
-### Experiment Tracking
-
-The baseline integrates with [Weights & Biases](https://wandb.ai) for training curves, hyperparameter logging, and sweep optimization. Set your API key via environment variable before training:
-
-```bash
-export WANDB_API_KEY=your_key_here
-```
-
-### SLURM
-
-A SLURM submission script is provided for HPC clusters:
-```bash
-sbatch badnet/badnet.sub
-```
-Edit `badnet.sub` to match your cluster configuration and set `WANDB_API_KEY` as an environment variable (do not hardcode it in the script).
+- Maria Teresa Parreira — Cornell University, USA
+- Micol Spitale — Politecnico di Milano, Italy
+- Maia Stiber — Microsoft Research, USA
+- Shiye Cao — Johns Hopkins University, USA
+- Amama Mahmood — Johns Hopkins University, USA
+- Chien-Ming Huang — Johns Hopkins University, USA
+- Hatice Gunes — University of Cambridge, UK
+- Wendy Ju — Cornell Tech, USA
 
 ---
 
 ## Citation
 
-If you use this code or data in your research, please cite:
+If you use the datasets or code from this challenge, please cite:
+
 ```bibtex
-@misc{errhri3-2026,
-  title={ERRHRI 3.0 Challenge},
-  author={ERRHRI Team},
+@inproceedings{parreira2026errhri,
+  title={ERR@HRI 3.0 Challenge: Multimodal Detection of Errors and Anticipation in Human-Robot Interactions},
+  author={Parreira, Maria Teresa and Spitale, Micol and Stiber, Maia and Cao, Shiye and Mahmood, Amama and Huang, Chien-Ming and Gunes, Hatice and Ju, Wendy},
+  booktitle={Proceedings of the 28th ACM International Conference on Multimodal Interaction (ICMI '26)},
   year={2026},
-  url={https://github.com/your-org/errhri-3-0}
+  publisher={ACM}
 }
 ```
 
@@ -215,4 +178,4 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 ## Issues and Support
 
-Please use the [GitHub issue tracker](../../issues) for questions about the baseline code. For questions about registration, data access, or the challenge rules, contact the organizers via the challenge website.
+For questions about the baseline code, please use the [GitHub issue tracker](../../issues). For questions about registration, data access, or challenge rules, contact the organizers via the challenge website.
