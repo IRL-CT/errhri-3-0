@@ -98,10 +98,10 @@ Evaluation scripts will be released in this repository by **May 1, 2026**.
 | March 15, 2026 | Registration opens; training and validation data released |
 | May 1, 2026 | Baseline models and evaluation scripts released |
 | June 1, 2026 | Test data released (without labels) |
-| June 15, 2026 | Submission deadline for predictions |
-| June 22, 2026 | Paper submission deadline |
-| July 15, 2026 | Notification of acceptance |
-| August 6, 2026 | Camera-ready papers due |
+| June 8, 2026 | Submission deadline for predictions |
+| June 15, 2026 | Paper submission deadline |
+| July 8, 2026 | Notification of acceptance |
+| August 2, 2026 | Camera-ready papers due (Hard Deadline) |
 | October 5, 2026 | Challenge workshop at ICMI 2026, Napoli, Italy |
 
 ---
