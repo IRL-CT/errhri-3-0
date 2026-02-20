@@ -2,8 +2,8 @@
 
 Official repository for the **ERR@HRI 3.0 Challenge** at [ICMI 2026](https://icmi.acm.org/2026/) (5–9 October, Napoli, Italy). Participants will find everything needed to get started: dataset access, evaluation scripts, and the baseline implementation.
 
-> **Challenge website:** _[TBD]_
-> **Contact:** _[email TBD]_
+> **Challenge website:** [here](https://sites.google.com/view/errhri30/)
+> **Contact:** Maria Teresa Parreira (mb2554@cornell.edu)
 
 ---
 
