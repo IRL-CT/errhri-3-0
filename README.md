@@ -9,7 +9,7 @@ Official repository for the **ERR@HRI 3.0 Challenge** at [ICMI 2026](https://icm
 
 ## Organizer TODO
 
-- [ ] Website update and maintenance (Teresa)
+- [x] Website update and maintenance (Teresa)
 - [ ] Share Call for Participation (CfP)
 - [ ] Repo maintenance (Teresa)
 - [ ] Organize dataset and EULA/data agreement ("participant package") (Teresa)
