@@ -43,22 +43,131 @@ ERR@HRI 3.0 provides two complementary datasets, both collected via crowdsourcin
 | Characteristic | BAD Dataset | Bad Idea Dataset |
 |---|---|---|
 | Participants | 45 | 29 |
-| Total recordings | 2,054 videos | 951 videos |
-| Total duration | 36,650 s | 1,851 s |
+| Total recordings | 1,645 videos | 865 videos |
+| Total duration | 25,527 s | 1,851 s |
+| Frame rate | 30 fps | 30 fps |
 | Temporal focus | During failure | Before failure |
 | Error type | Observed failures | Anticipated outcomes |
 
 ### BAD (Bystander Affect Detection) Dataset
 
-Webcam recordings of **45 participants'** spontaneous facial reactions while watching **46 robot and human failure scenarios** (average clip: ~17.8 s). Stimuli videos are also provided (46 `.mp4` files).
+Webcam recordings of **45 participants'** spontaneous facial reactions while watching **46 robot and human failure scenarios** (average clip: ~15.5 s at 30 fps). Stimuli videos are also provided (46 `.mp4` files).
 
-**Labels:** Binary — `Failure` (human or robot failure scenario) vs. `Control` (no failure, 6 videos).
+**Labels:** Binary — `1` (Failure: human or robot failure scenario) vs. `0` (Control: no failure, 6 videos per participant). Labels are encoded in the video filename as `QID<stimulus_id>_<label>.mp4`.
+
+#### Data Splits
+
+| Split | Participants | Total videos | Label 0 (Control) | Label 1 (Failure) | Total Duration |
+|---|---|---|---|---|---|
+| trainval | 36 | 1,319 | 173 (13.1%) | 1,146 (86.9%) | 20,567 s |
+| test | 9 | 326 | 43 (13.2%) | 283 (86.8%) | 4,960 s |
+| **Total** | **45** | **1,645** | **216 (13.1%)** | **1,429 (86.9%)** | **25,527 s** |
+
+Detailed per-video statistics (participant, split, video name, label, and duration in seconds) are provided in [`baddataset_stats.csv`](baddataset_stats.csv). Video names follow the convention `QID<stimulus_id>_<label>.mp4`, where `<stimulus_id>` identifies the stimulus scenario and `<label>` is the binary label (0 = Control, 1 = Failure).
+
+#### Per-Participant Statistics
+
+| Participant | Split | Videos | Label 0 (Control) | Label 1 (Failure) | Duration (s) |
+|---|---|---|---|---|---|
+| 1001 | trainval | 31 | 5 | 26 | 519.3 |
+| 1115 | trainval | 37 | 5 | 32 | 595.9 |
+| 1290 | trainval | 43 | 5 | 38 | 597.3 |
+| 1402 | trainval | 38 | 5 | 33 | 605.4 |
+| 1447 | trainval | 45 | 5 | 40 | 641.2 |
+| 1674 | trainval | 32 | 5 | 27 | 520.9 |
+| 2144 | trainval | 31 | 5 | 26 | 508.0 |
+| 2206 | trainval | 36 | 5 | 31 | 600.0 |
+| 2485 | trainval | 30 | 5 | 25 | 531.2 |
+| 2568 | trainval | 37 | 5 | 32 | 595.1 |
+| 2615 | trainval | 44 | 5 | 39 | 619.8 |
+| 2733 | trainval | 37 | 5 | 32 | 605.3 |
+| 2767 | trainval | 20 | 5 | 15 | 344.1 |
+| 3367 | trainval | 27 | 5 | 22 | 414.8 |
+| 3537 | trainval | 26 | 5 | 21 | 476.9 |
+| 4195 | trainval | 39 | 4 | 35 | 630.8 |
+| 4297 | trainval | 41 | 5 | 36 | 625.1 |
+| 4456 | trainval | 45 | 5 | 40 | 589.6 |
+| 4667 | trainval | 37 | 5 | 32 | 590.6 |
+| 4806 | trainval | 22 | 3 | 19 | 365.6 |
+| 4807 | trainval | 44 | 5 | 39 | 616.5 |
+| 4928 | trainval | 30 | 5 | 25 | 517.1 |
+| 5141 | trainval | 34 | 3 | 31 | 528.8 |
+| 5230 | trainval | 38 | 5 | 33 | 611.8 |
+| 5409 | trainval | 37 | 5 | 32 | 575.4 |
+| 5729 | trainval | 45 | 5 | 40 | 621.5 |
+| 6247 | trainval | 36 | 3 | 33 | 630.5 |
+| 6682 | trainval | 37 | 5 | 32 | 622.3 |
+| 6778 | trainval | 45 | 5 | 40 | 630.4 |
+| 7446 | trainval | 41 | 5 | 36 | 616.6 |
+| 7675 | trainval | 45 | 5 | 40 | 639.9 |
+| 7694 | trainval | 37 | 5 | 32 | 590.6 |
+| 7749 | trainval | 39 | 5 | 34 | 609.1 |
+| 9009 | trainval | 38 | 5 | 33 | 621.2 |
+| 9483 | trainval | 33 | 5 | 28 | 504.3 |
+| 9922 | trainval | 42 | 5 | 37 | 654.0 |
+| 1179 | test | 30 | 5 | 25 | 491.0 |
+| 1769 | test | 40 | 5 | 35 | 630.6 |
+| 2505 | test | 34 | 5 | 29 | 544.8 |
+| 3272 | test | 45 | 5 | 40 | 627.8 |
+| 4302 | test | 45 | 5 | 40 | 578.3 |
+| 4891 | test | 37 | 5 | 32 | 590.0 |
+| 6095 | test | 37 | 5 | 32 | 574.8 |
+| 7209 | test | 21 | 3 | 18 | 315.6 |
+| 8564 | test | 37 | 5 | 32 | 607.4 |
 
 ### Bad Idea Dataset
 
 Webcam recordings of **29 participants'** anticipatory reactions while predicting whether **30 action scenarios** would end well or poorly — captured *before* outcomes were revealed (average clip: ~1.95 s). Stimuli videos also provided (30 `.mp4` files).
 
-**Labels:** Binary — participant's *predicted* outcome: `Well` (good outcome expected) vs. `Poorly` (bad outcome expected). Labels reflect participant prediction, not actual outcome. Data is mostly balanced (1.15 good-to-bad ratio).
+**Labels:** Binary — participant's *predicted* outcome: `1` (good outcome expected, i.e. "Well") vs. `0` (bad outcome expected, i.e. "Poorly"). Labels reflect participant prediction, not actual outcome.
+
+#### Data Splits
+
+| Split | Participants | Total videos | Label 0 (Poorly) | Label 1 (Well) |
+|---|---|---|---|---|
+| trainval | 23 | 685 | 360 (52.6%) | 325 (47.4%) |
+| test | 6 | 180 | 103 (57.2%) | 77 (42.8%) |
+| **Total** | **29** | **865** | **463 (53.5%)** | **402 (46.5%)** |
+
+Note: participant 1483 is missing one video (q_20_main); participant 9055 is missing one video (q_12_main). All other participants have 30 videos each.
+
+#### Per-Participant Statistics
+
+Detailed per-video statistics (participant, split, video name, label, and frame count) are provided in [`badidea_dataset_stats.csv`](badidea_dataset_stats.csv). Frame names follow the convention `q_ID_main_LABEL_30fps_frameNNNN.png`, where `q_ID_main` is the video identifier, `LABEL` is the binary label (0 or 1), and `NNNN` is the zero-padded frame index.
+
+Summary per participant:
+
+| Participant | Split | Videos | Label 0 | Label 1 |
+|---|---|---|---|---|
+| 1048 | trainval | 30 | 19 | 11 |
+| 1251 | trainval | 30 | 18 | 12 |
+| 1483 | trainval | 28 | 15 | 13 |
+| 1676 | trainval | 30 | 21 | 9 |
+| 2103 | trainval | 30 | 11 | 19 |
+| 2698 | trainval | 30 | 16 | 14 |
+| 2946 | trainval | 30 | 14 | 16 |
+| 3157 | trainval | 30 | 12 | 18 |
+| 3203 | trainval | 30 | 15 | 15 |
+| 3339 | trainval | 30 | 17 | 13 |
+| 3882 | trainval | 30 | 15 | 15 |
+| 5099 | trainval | 30 | 16 | 14 |
+| 5124 | trainval | 30 | 19 | 11 |
+| 5233 | trainval | 30 | 12 | 18 |
+| 5310 | trainval | 30 | 12 | 18 |
+| 7136 | trainval | 30 | 17 | 13 |
+| 7797 | trainval | 30 | 16 | 14 |
+| 8184 | trainval | 30 | 21 | 9 |
+| 8758 | trainval | 30 | 12 | 18 |
+| 9055 | trainval | 27 | 13 | 14 |
+| 9385 | trainval | 30 | 16 | 14 |
+| 9777 | trainval | 30 | 16 | 14 |
+| 9941 | trainval | 30 | 17 | 13 |
+| 2313 | test | 30 | 17 | 13 |
+| 5009 | test | 30 | 16 | 14 |
+| 6488 | test | 30 | 17 | 13 |
+| 7782 | test | 30 | 24 | 6 |
+| 8436 | test | 30 | 15 | 15 |
+| 8786 | test | 30 | 14 | 16 |
 
 ---
 
@@ -138,6 +247,8 @@ _Baseline results to be added by May 1, 2026._
 │   ├── create_image_splits.py # Data splitting utilities
 │   ├── resize_dataset.py      # Dataset preprocessing
 │   └── badnet.sub             # SLURM submission script
+├── baddataset_stats.csv       # Per-video stats for BAD dataset (participant, split, video name, label, duration)
+├── badidea_dataset_stats.csv  # Per-video stats for Bad Idea dataset (participant, split, video name, label, frame count)
 ├── BASELINE.md                # Baseline documentation
 ├── challenge_proposal.pdf     # Challenge proposal (Parreira et al., ICMI'26)
 └── LICENSE
