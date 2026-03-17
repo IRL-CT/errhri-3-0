@@ -11,9 +11,9 @@ Official repository for the **ERR@HRI 3.0 Challenge** at [ICMI 2026](https://icm
 
 - [x] Website update and maintenance (Teresa)
 - [ ] Share Call for Participation (CfP)
-- [ ] Repo maintenance (Teresa)
-- [ ] Organize dataset and EULA/data agreement ("participant package") (Teresa)
-- [ ] Create evaluation scripts (volunteer?)
+- [x] Repo maintenance (Teresa)
+- [x] Organize dataset and data agreement ("participant package") (Teresa)
+- [x] Create evaluation scripts (volunteer?)
 - [ ] Train and document baseline (volunteer?)
 - [ ] _(later)_ Verify participants' submissions
 - [ ] _(later)_ Draft challenge paper
@@ -210,7 +210,7 @@ Evaluation scripts will be released in this repository by **May 1, 2026**.
 | June 8, 2026 | Submission deadline for predictions |
 | June 15, 2026 | Paper submission deadline |
 | July 8, 2026 | Notification of acceptance |
-| August 2, 2026 | Camera-ready papers due (Hard Deadline) |
+| July 23, 2026 | Camera-ready papers due (Hard Deadline) |
 | October 5, 2026 | Challenge workshop at ICMI 2026, Napoli, Italy |
 
 ---
@@ -219,8 +219,8 @@ Evaluation scripts will be released in this repository by **May 1, 2026**.
 
 The datasets contain non-anonymized visual data. To receive access, participants must:
 
-1. Register via the challenge website: _[link TBD]_
-2. Read and sign the **EULA** (End User License Agreement)
+1. Register via the challenge website: _[]_
+2. Read and sign the **DUA** (Data Use Agreement)
 3. Receive dataset download link
 
 **Data usage terms include:** no redistribution rights; datasets may only be used for this challenge; no use to defame participants; proper data security measures required.
