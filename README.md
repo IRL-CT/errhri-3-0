@@ -219,7 +219,7 @@ Evaluation scripts will be released in this repository by **May 1, 2026**.
 
 The datasets contain non-anonymized visual data. To receive access, participants must:
 
-1. Register via the challenge website: _[]_
+1. Register via the challenge website: _[https://sites.google.com/view/errhri30/]_
 2. Read and sign the **DUA** (Data Use Agreement)
 3. Receive dataset download link
 
