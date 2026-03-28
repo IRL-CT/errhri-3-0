@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-BADNet PyTorch - Training Script with NPY support
+BADNet PyTorch - Training Script (validation only, no test set evaluation)
 
-Supports both JPG and NPY datasets for training.
-Train/Val only - no test set.
+Use this script for the hyperparameter sweep: model selection is based solely
+on cross-validation performance, avoiding any test-set contamination.
 """
 
 import os
@@ -32,8 +32,8 @@ from get_metrics import get_test_metrics
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Train BADNet PyTorch model")
-    
+    parser = argparse.ArgumentParser(description="Train BADNet PyTorch model (val only)")
+
     # Data paths
     parser.add_argument("--csv_path", type=str,
                         default="../../data_badidea/trainval/label_data.csv",
@@ -44,18 +44,9 @@ def parse_args():
     parser.add_argument("--npy_base_path", type=str,
                         default="../../data_badidea/trainval_npy",
                         help="Base path to trainval NPY folders")
-    parser.add_argument("--test_csv_path", type=str,
-                        default="../../data_badidea/test/label_data.csv",
-                        help="Path to test set CSV file with labels")
-    parser.add_argument("--test_image_base_path", type=str,
-                        default="../../data_badidea/test",
-                        help="Base path to test image folders")
-    parser.add_argument("--test_npy_base_path", type=str,
-                        default="../../data_badidea/test_npy",
-                        help="Base path to test NPY folders")
 
     # Model hyperparameters
-    parser.add_argument("--activation", type=str, default="relu", 
+    parser.add_argument("--activation", type=str, default="relu",
                         choices=["relu", "sigmoid"], help="Activation function")
     parser.add_argument("--kernel_size", type=int, default=4, help="Kernel size for conv layers")
     parser.add_argument("--base_filters", type=int, default=16, help="Base number of filters")
@@ -65,37 +56,37 @@ def parse_args():
                         help="Model architecture type")
     parser.add_argument("--freeze_backbone", action="store_true", help="Freeze pretrained backbone")
     parser.add_argument("--dropout", type=float, default=0.5, help="Dropout rate for pretrained models")
-    
+
     # Training parameters
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size")
     parser.add_argument("--epochs", type=int, default=100, help="Number of epochs")
     parser.add_argument("--patience", type=int, default=100, help="Early stopping patience")
     parser.add_argument("--num_workers", type=int, default=0, help="Number of data loader workers")
-    
+
     # Cross-validation
     parser.add_argument("--num_folds", type=int, default=5, help="Number of CV folds")
-    parser.add_argument("--fold", type=int, default=None, 
+    parser.add_argument("--fold", type=int, default=None,
                         help="Specific fold to train (None for all folds)")
-    
+
     # Data format
     parser.add_argument("--use_npy", action="store_true", help="Use NPY files instead of JPG")
     parser.add_argument("--use_weighted_loss", default=False, action="store_true", help="Use weighted loss function")
     parser.add_argument("--num_augmentations", type=int, default=0, help="Number of augmentations per image")
     parser.add_argument("--cache_images", action="store_true", help="Cache images in memory for faster loading")
-    
+
     # Temporal analysis parameters
     parser.add_argument("--window_size", type=int, default=5, help="Window size for temporal analysis")
     parser.add_argument("--slide_length", type=int, default=1, help="Slide length for temporal analysis")
 
     # Other
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
-    parser.add_argument("--checkpoint_dir", type=str, default="./checkpoints", 
+    parser.add_argument("--checkpoint_dir", type=str, default="./checkpoints",
                         help="Directory to save checkpoints")
     parser.add_argument("--no_cuda", action="store_true", help="Disable CUDA")
-    parser.add_argument("--wandb_project", type=str, default="errhri_badidea_baseline", 
+    parser.add_argument("--wandb_project", type=str, default="errhri_badidea_baseline",
                         help="W&B project name")
     parser.add_argument("--no_wandb", action="store_true", help="Disable W&B logging")
-    
+
     return parser.parse_args()
 
 
@@ -142,7 +133,7 @@ def build_official_submission(all_preds, all_labels, all_probs,
 
             if frame_probs is not None:
                 avg_probs = np.mean(frame_probs[start:end], axis=0)
-                y_pred  = int(np.argmax(avg_probs))
+                y_pred   = int(np.argmax(avg_probs))
                 y_prob_0 = float(avg_probs[0])
                 y_prob_1 = float(avg_probs[1])
             else:
@@ -255,7 +246,7 @@ def run_official_eval(all_preds, all_labels, all_probs,
 def evaluate_model(model, dataloader, device, num_classes=2, window_size=5, slide_length=1):
     """
     Evaluate model and return comprehensive metrics including AUC and temporal analysis.
-    
+
     Args:
         model: Trained model
         dataloader: DataLoader for evaluation
@@ -263,49 +254,49 @@ def evaluate_model(model, dataloader, device, num_classes=2, window_size=5, slid
         num_classes: Number of classes
         window_size: Window size for temporal analysis
         slide_length: Slide length for temporal analysis
-    
+
     Returns:
         dict: Comprehensive metrics including basic metrics, AUC, and temporal analysis
     """
     model.eval()
     all_preds, all_labels, all_probs = [], [], []
     all_participant_ids, all_video_ids = [], []
-    
+
     with torch.no_grad():
         for batch_idx, (inputs, labels) in enumerate(dataloader):
             inputs = inputs.to(device)
             outputs = model(inputs)
             probs = torch.softmax(outputs, dim=1)
             _, predicted = outputs.max(1)
-            
+
             all_preds.extend(predicted.cpu().numpy())
             all_labels.extend(labels.numpy())
             all_probs.extend(probs.cpu().numpy())
-            
+
             # Collect metadata for temporal analysis (if available)
             if hasattr(dataloader.dataset, 'get_metadata'):
                 batch_size = inputs.size(0)
                 start_idx = batch_idx * dataloader.batch_size
-                
+
                 for i in range(batch_size):
                     sample_idx = start_idx + i
                     if sample_idx < len(dataloader.dataset):
                         metadata = dataloader.dataset.get_metadata(sample_idx)
                         all_participant_ids.append(metadata['participant_id'])
                         all_video_ids.append(metadata['video_id'])
-    
+
     all_preds = np.array(all_preds)
     all_labels = np.array(all_labels)
     all_probs = np.array(all_probs)
-    
+
     # Prepare metadata arrays for temporal analysis
     participant_ids = np.array(all_participant_ids) if all_participant_ids else None
     video_ids = np.array(all_video_ids) if all_video_ids else None
-    
+
     # Get comprehensive metrics using enhanced get_test_metrics function
     metrics = get_test_metrics(
-        y_pred=all_preds, 
-        y_true=all_labels, 
+        y_pred=all_preds,
+        y_true=all_labels,
         tolerance=1,
         y_proba=all_probs,
         participant_ids=participant_ids,
@@ -313,38 +304,38 @@ def evaluate_model(model, dataloader, device, num_classes=2, window_size=5, slid
         window_size=window_size,
         slide_length=slide_length
     )
-    
+
     # Add kappa and confusion matrix (from sklearn)
     from sklearn.metrics import cohen_kappa_score, confusion_matrix
     kappa = cohen_kappa_score(all_labels, all_preds)
     conf_matrix = confusion_matrix(all_labels, all_preds)
-    
+
     metrics['kappa'] = kappa
     metrics['confusion_matrix'] = conf_matrix
     metrics['participant_ids'] = participant_ids
     metrics['video_ids'] = video_ids
-    
+
     # Print comprehensive results
     print("\n" + "=" * 80)
     print("COMPREHENSIVE MODEL EVALUATION METRICS")
     print("=" * 80)
-    
+
     print("\n1. BASIC METRICS:")
     print(f"   Accuracy:  {metrics['test_accuracy']:.4f}")
     print(f"   Precision: {metrics['test_precision']:.4f}")
     print(f"   Recall:    {metrics['test_recall']:.4f}")
     print(f"   F1 Score:  {metrics['test_f1']:.4f}")
     print(f"   Cohen's Kappa: {kappa:.4f}")
-    
+
     if metrics.get('test_auc') is not None:
         print(f"   AUC:       {metrics['test_auc']:.4f}")
-    
+
     print("\n2. TOLERANT METRICS (tolerance=1):")
     print(f"   Accuracy:  {metrics['test_accuracy_tolerant']:.4f}")
     print(f"   Precision: {metrics['test_precision_tolerant']:.4f}")
     print(f"   Recall:    {metrics['test_recall_tolerant']:.4f}")
     print(f"   F1 Score:  {metrics['test_f1_tolerant']:.4f}")
-    
+
     # Print temporal analysis results if available
     if 'video_level_accuracy' in metrics:
         print("\n3. TEMPORAL WINDOW ANALYSIS:")
@@ -355,7 +346,7 @@ def evaluate_model(model, dataloader, device, num_classes=2, window_size=5, slid
         print(f"   Avg detection time: {metrics['avg_detection_time_windows']:.1f} windows")
         print(f"   Avg detection percentage: {metrics['avg_detection_percentage']:.1f}%")
         print(f"   Videos never detected: {metrics['never_detected_count']}/{metrics['total_videos']}")
-    
+
     print("\n4. CONFUSION MATRIX:")
     print(conf_matrix)
     print("=" * 80)
@@ -366,7 +357,7 @@ def evaluate_model(model, dataloader, device, num_classes=2, window_size=5, slid
 def main():
     args = parse_args()
     set_seed(args.seed)
-    
+
     use_cuda = not args.no_cuda and torch.cuda.is_available()
     device = torch.device('cuda' if use_cuda else 'cpu')
     print(f"Device: {device}")
@@ -387,12 +378,9 @@ def main():
             "csv_path": {"values": [args.csv_path]},
             "npy_base_path": {"values": [args.npy_base_path]},
             "image_base_path": {"values": [args.image_base_path]},
-            "test_csv_path": {"values": [args.test_csv_path]},
-            "test_npy_base_path": {"values": [args.test_npy_base_path]},
-            "test_image_base_path": {"values": [args.test_image_base_path]},
             "patience": {"values": [args.patience]},
             "num_workers": {"values": [args.num_workers]},
-            "num_augmentations": {"values": [0,2,3]},
+            "num_augmentations": {"values": [0, 2, 3]},
             "model_type": {"values": ['original', 'simple', 'pretrained_resnet18', 'pretrained_resnet34']},
             "freeze_backbone": {"values": [True, False]},
             "dropout": {"values": [0.3, 0.5, 0.7]},
@@ -403,82 +391,53 @@ def main():
             "slide_length": {"values": [1, 2, 3]},
         },
     }
-    
+
     def train_wrapper():
         wandb.init()
         config = wandb.config
-        
+
         # Update args with sweep config
         for key, value in config.items():
             if hasattr(args, key):
                 setattr(args, key, value)
-        
+
         set_seed(args.seed)
-        
+
         # Get participants from trainval folder
         image_path = args.npy_base_path if args.use_npy else args.image_base_path
-        all_participants = [d for d in os.listdir(image_path) 
+        all_participants = [d for d in os.listdir(image_path)
                            if os.path.isdir(os.path.join(image_path, d))]
         all_participants = sorted(all_participants)
-        
+
         print(f"Found {len(all_participants)} participants in {image_path}")
         print(f"Participants: {all_participants}")
-        
+
         # Number of classes is always 2 (binary classification)
         num_classes = 2
         print(f"Number of classes: {num_classes}")
-        
+
         # Create folds
         print(f"\nCreating {args.num_folds} inter-participant folds...")
         folds = create_interparticipant_folds(all_participants, num_folds=args.num_folds, seed=args.seed)
-        
+
         # Determine which folds to train
         if args.fold is not None:
             folds_to_train = [args.fold]
         else:
             folds_to_train = range(len(folds))
 
-        # Load test set once (used for per-fold test evaluation)
-        test_base_path = args.test_npy_base_path if args.use_npy else args.test_image_base_path
-        test_csv       = args.test_csv_path
-        test_loader = None
-        if os.path.isdir(test_base_path) and os.path.isfile(test_csv):
-            test_participants = sorted([
-                d for d in os.listdir(test_base_path)
-                if os.path.isdir(os.path.join(test_base_path, d))
-            ])
-            print(f"\nFound {len(test_participants)} test participants in {test_base_path}")
-            if test_participants:
-                if args.use_npy:
-                    test_dataset = BadNetDatasetNPY(
-                        test_participants, test_base_path, test_csv,
-                        num_augmentations=0, cache_images=args.cache_images,
-                    )
-                else:
-                    test_dataset = BadNetDatasetWithAugmentation(
-                        test_participants, test_base_path, test_csv,
-                        num_augmentations=0,
-                    )
-                test_loader = DataLoader(
-                    test_dataset, batch_size=args.batch_size, shuffle=False,
-                    num_workers=args.num_workers, pin_memory=use_cuda,
-                )
-        else:
-            print(f"\n[WARN] Test set not found at {test_base_path} — skipping test evaluation.")
-
         all_val_metrics = []
         all_val_official = []
-        all_test_official = []
 
         for fold_idx in folds_to_train:
             train_participants, val_participants = folds[fold_idx]
-            
+
             print(f"\n{'='*60}")
             print(f"FOLD {fold_idx}")
             print(f"{'='*60}")
             print(f"Train participants: {train_participants}")
             print(f"Val participants: {val_participants}")
-            
+
             # Create datasets
             if args.use_npy:
                 train_dataset = BadNetDatasetNPY(
@@ -500,16 +459,16 @@ def main():
                     val_participants, args.image_base_path, args.csv_path,
                     num_augmentations=0
                 )
-            
+
             # Create data loaders
             train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                       num_workers=args.num_workers, pin_memory=use_cuda)
             val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False,
                                     num_workers=args.num_workers, pin_memory=use_cuda)
-            
+
             print(f"Train samples: {len(train_dataset)}")
             print(f"Val samples: {len(val_dataset)}")
-            
+
             # Create model
             print("\nCreating model...")
             model = create_model(
@@ -528,7 +487,7 @@ def main():
             trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             print(f"Total parameters: {total_params:,}")
             print(f"Trainable parameters: {trainable_params:,}")
-            
+
             # Loss and optimizer
             if args.use_weighted_loss:
                 # Compute class weights
@@ -542,16 +501,16 @@ def main():
             scheduler = optim.lr_scheduler.ReduceLROnPlateau(
                 optimizer, mode='min', factor=0.5, patience=10, verbose=True
             )
-            
+
             # Train
             checkpoint_dir = os.path.join(args.checkpoint_dir, f'fold_{fold_idx}')
             print(f"\nStarting training for {args.epochs} epochs...")
             print(f"Checkpoints will be saved to {checkpoint_dir}")
-            
+
             history = train_fold(
                 model, train_loader, val_loader, criterion, optimizer, scheduler,
                 device, args.epochs, patience=args.patience, checkpoint_dir=checkpoint_dir
-            )            
+            )
             # Log training history to W&B
             for epoch_idx in range(len(history['train_loss'])):
                 wandb.log({
@@ -562,7 +521,7 @@ def main():
                     'epoch': epoch_idx + 1,
                     'fold': fold_idx
                 })
-                        
+
             # Evaluate on validation set
             print(f"\nFinal evaluation on validation set...")
             metrics = evaluate_model(
@@ -580,23 +539,6 @@ def main():
                 metrics['video_ids'], args.window_size, args.slide_length,
             )
             all_val_official.append(val_official)
-
-            # Official eval on test set
-            test_official = {}
-            if test_loader is not None:
-                print(f"\nEvaluating fold {fold_idx} model on test set...")
-                test_metrics = evaluate_model(
-                    model, test_loader, device,
-                    num_classes=num_classes,
-                    window_size=args.window_size,
-                    slide_length=args.slide_length,
-                )
-                test_official = run_official_eval(
-                    test_metrics['predictions'], test_metrics['true_labels'],
-                    test_metrics['probabilities'], test_metrics['participant_ids'],
-                    test_metrics['video_ids'], args.window_size, args.slide_length,
-                )
-            all_test_official.append(test_official)
 
             # Log validation metrics to W&B
             wandb_metrics = {
@@ -630,18 +572,13 @@ def main():
                 if v is not None:
                     wandb_metrics[f'fold_{fold_idx}_val_{k}'] = v
 
-            # Official eval metrics — test
-            for k, v in test_official.items():
-                if v is not None:
-                    wandb_metrics[f'fold_{fold_idx}_test_{k}'] = v
-
             wandb.log(wandb_metrics)
 
             # Log prediction probabilities
             probs_df = pd.DataFrame(metrics['probabilities'])
             table = wandb.Table(dataframe=probs_df)
             wandb.log({f"fold_{fold_idx}_prediction_probabilities_table": table})
-            
+
             # Save final model
             final_model_path = os.path.join(checkpoint_dir, 'final_model.pth')
             torch.save({
@@ -652,69 +589,69 @@ def main():
                 'args': vars(args)
             }, final_model_path)
             print(f"Saved final model to {final_model_path}")
-        
+
         # Summary
         if len(all_val_metrics) > 0:
             print(f"\n{'='*60}")
             print("SUMMARY ACROSS ALL FOLDS")
             print(f"{'='*60}")
-            
+
             # Basic metrics
             avg_accuracy = np.mean([m['test_accuracy'] for m in all_val_metrics])
             avg_precision = np.mean([m['test_precision'] for m in all_val_metrics])
             avg_recall = np.mean([m['test_recall'] for m in all_val_metrics])
             avg_f1 = np.mean([m['test_f1'] for m in all_val_metrics])
             avg_kappa = np.mean([m['kappa'] for m in all_val_metrics])
-            
+
             # Tolerant metrics
             avg_accuracy_tol = np.mean([m['test_accuracy_tolerant'] for m in all_val_metrics])
             avg_precision_tol = np.mean([m['test_precision_tolerant'] for m in all_val_metrics])
             avg_recall_tol = np.mean([m['test_recall_tolerant'] for m in all_val_metrics])
             avg_f1_tol = np.mean([m['test_f1_tolerant'] for m in all_val_metrics])
-            
+
             # Standard deviations
             std_accuracy = np.std([m['test_accuracy'] for m in all_val_metrics])
             std_f1 = np.std([m['test_f1'] for m in all_val_metrics])
             std_accuracy_tol = np.std([m['test_accuracy_tolerant'] for m in all_val_metrics])
             std_f1_tol = np.std([m['test_f1_tolerant'] for m in all_val_metrics])
-            
+
             # AUC metrics (if available)
             auc_scores = [m.get('test_auc') for m in all_val_metrics if m.get('test_auc') is not None]
             avg_auc = np.mean(auc_scores) if auc_scores else None
             std_auc = np.std(auc_scores) if auc_scores else None
-            
+
             # Temporal analysis metrics (if available)
             video_acc_scores = [m.get('video_level_accuracy') for m in all_val_metrics if 'video_level_accuracy' in m]
             avg_video_acc = np.mean(video_acc_scores) if video_acc_scores else None
-            
+
             window_acc_scores = [m.get('avg_window_accuracy') for m in all_val_metrics if 'avg_window_accuracy' in m]
             avg_window_acc = np.mean(window_acc_scores) if window_acc_scores else None
-            
+
             detection_times = [m.get('avg_detection_time_windows') for m in all_val_metrics if 'avg_detection_time_windows' in m]
             avg_detection_time = np.mean(detection_times) if detection_times else None
-            
+
             print(f"Basic Metrics:")
             print(f"Validation Accuracy:  {avg_accuracy:.4f} ± {std_accuracy:.4f}")
             print(f"Validation Precision: {avg_precision:.4f}")
             print(f"Validation Recall:    {avg_recall:.4f}")
             print(f"Validation F1 Score:  {avg_f1:.4f} ± {std_f1:.4f}")
             print(f"Validation Kappa:     {avg_kappa:.4f}")
-            
+
             if avg_auc is not None:
                 print(f"Validation AUC:       {avg_auc:.4f} ± {std_auc:.4f}")
-            
+
             print(f"\nTolerant Metrics:")
             print(f"Accuracy (tol):  {avg_accuracy_tol:.4f} ± {std_accuracy_tol:.4f}")
             print(f"Precision (tol): {avg_precision_tol:.4f}")
             print(f"Recall (tol):    {avg_recall_tol:.4f}")
             print(f"F1 Score (tol):  {avg_f1_tol:.4f} ± {std_f1_tol:.4f}")
-            
+
             if avg_video_acc is not None:
                 print(f"\nTemporal Analysis:")
                 print(f"Video-level accuracy: {avg_video_acc:.4f}")
                 print(f"Window accuracy:      {avg_window_acc:.4f}")
                 print(f"Avg detection time:   {avg_detection_time:.1f} windows")
-                
+
             # Log average metrics to W&B
             wandb_summary = {
                 'avg_val_accuracy': avg_accuracy,
@@ -756,35 +693,21 @@ def main():
                 if vals:
                     wandb_summary[f'avg_val_{k}'] = float(np.mean(vals))
 
-            # Official eval averages — test
-            all_test_keys = set()
-            for d in all_test_official:
-                all_test_keys.update(d.keys())
-            for k in all_test_keys:
-                vals = [d[k] for d in all_test_official if d.get(k) is not None]
-                if vals:
-                    wandb_summary[f'avg_test_{k}'] = float(np.mean(vals))
-
             print(f"\nOfficial eval summary (val):")
             for k in sorted(all_official_keys):
                 if f'avg_val_{k}' in wandb_summary:
                     print(f"  avg_val_{k}: {wandb_summary[f'avg_val_{k}']:.4f}")
-            if all_test_keys:
-                print(f"\nOfficial eval summary (test):")
-                for k in sorted(all_test_keys):
-                    if f'avg_test_{k}' in wandb_summary:
-                        print(f"  avg_test_{k}: {wandb_summary[f'avg_test_{k}']:.4f}")
 
             wandb.log(wandb_summary)
             wandb.run.summary.update(wandb_summary)
-        
+
         wandb.finish()
-    
+
     # Initialize sweep
     sweep_id = wandb.sweep(sweep_config, project=args.wandb_project)
     print(f"Sweep ID: {sweep_id}")
     print("Starting sweep agent...")
-    
+
     # Run sweep
     wandb.agent(sweep_id, function=train_wrapper)
 
