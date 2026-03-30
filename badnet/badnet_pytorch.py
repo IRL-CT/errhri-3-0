@@ -33,14 +33,14 @@ def set_seed(seed=42):
 def parse_image_filename(filename):
     """
     Parse image filename to extract q_id and label.
-    Format: q_{id}_main_{label}_30fps_frame{number}.jpg
-    Example: q_6_main_1_30fps_frame0011.jpg
+    Format: q_{id}_main_{label}_{fps}fps_frame{number}.jpg
+    Example: q_6_main_1_30fps_frame0011.jpg or q_106_main_1_5fps_frame0001.npy
     
     Returns:
         tuple: (q_id, label_from_filename, frame_number) or (None, None, None) if parsing fails
     """
-    # Pattern: q_{id}_main_{label}_30fps_frame{number}
-    pattern = r'(q_\d+)_main_(\d+)_30fps_frame(\d+)'
+    # Pattern: q_{id}_main_{label}_{fps}fps_frame{number}
+    pattern = r'(q_\d+)_main_(\d+)_\d+fps_frame(\d+)'
     match = re.match(pattern, filename)
     
     if match:
