@@ -36,13 +36,13 @@ def parse_args():
 
     # Data paths
     parser.add_argument("--csv_path", type=str,
-                        default="../../data_badidea/trainval_npy/label_data.csv",
+                        default="../../data_baddataset/trainval_npy/label_data.csv",
                         help="Path to CSV file with labels")
     parser.add_argument("--image_base_path", type=str,
-                        default="../../data_badidea/trainval",
+                        default="../../data_baddataset/trainval_frames",
                         help="Base path to trainval image folders")
     parser.add_argument("--npy_base_path", type=str,
-                        default="../../data_badidea/trainval_npy",
+                        default="../../data_baddataset/trainval_npy",
                         help="Base path to trainval NPY folders")
 
     # Model hyperparameters
@@ -83,7 +83,7 @@ def parse_args():
     parser.add_argument("--checkpoint_dir", type=str, default="./checkpoints",
                         help="Directory to save checkpoints")
     parser.add_argument("--no_cuda", action="store_true", help="Disable CUDA")
-    parser.add_argument("--wandb_project", type=str, default="errhri_badidea_baseline2",
+    parser.add_argument("--wandb_project", type=str, default="errhri_baddataset_baseline",
                         help="W&B project name")
     parser.add_argument("--no_wandb", action="store_true", help="Disable W&B logging")
 
