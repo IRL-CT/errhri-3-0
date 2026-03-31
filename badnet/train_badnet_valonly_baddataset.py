@@ -7,6 +7,7 @@ Use this script for the hyperparameter sweep: model selection is based solely
 on cross-validation performance, avoiding any test-set contamination.
 """
 
+import gc
 import os
 import sys
 import argparse
@@ -589,6 +590,13 @@ def main():
                 'args': vars(args)
             }, final_model_path)
             print(f"Saved final model to {final_model_path}")
+
+            # Free memory before next fold
+            del train_dataset, val_dataset, train_loader, val_loader
+            del model, optimizer, scheduler, criterion, history
+            gc.collect()
+            if use_cuda:
+                torch.cuda.empty_cache()
 
         # Summary
         if len(all_val_metrics) > 0:
