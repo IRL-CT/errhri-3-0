@@ -43,6 +43,19 @@ import argparse, sys, warnings
 from collections import Counter
 import numpy as np
 import pandas as pd
+
+
+def _assert_constant_label(series):
+    """Assert all frames in a clip share the same label; raise if not."""
+    unique = series.unique()
+    if len(unique) != 1:
+        raise ValueError(
+            f"Inconsistent y_true labels within a clip: {sorted(unique)}. "
+            "All frames in a clip must share the same label."
+        )
+    return int(unique[0])
+
+
 from sklearn.metrics import (
     accuracy_score, balanced_accuracy_score,
     f1_score, precision_score, recall_score,
@@ -76,9 +89,9 @@ def load_ground_truth(path):
     if not df["y_true"].isin([0, 1]).all():
         sys.exit("[ERROR] y_true must be binary (0 or 1).")
 
-    # Collapse to video-level GT (label is constant within each clip)
+    # Collapse to video-level GT (label must be constant within each clip)
     gt_video = (df.groupby(["participant_id", "video_id"])["y_true"]
-                  .agg(lambda x: int(Counter(x).most_common(1)[0][0]))
+                  .agg(lambda x: _assert_constant_label(x))
                   .reset_index())
 
     # Also keep frame counts per clip for computing n_windows and detection %
@@ -164,15 +177,21 @@ def compute_temporal_metrics(pred_df, gt_video, window_size, slide):
 
         win_grp  = win_grp.sort_values("window_id")
         preds    = win_grp["y_pred"].values
-        n_win    = len(preds)
 
-        # FNR: fraction of windows that predict 0 on a positive clip
-        fnr = float((preds != 1).sum()) / n_win if n_win > 0 else float("nan")
+        # Expected number of windows given clip length and declared parameters
+        expected_n_win = max((n_frames - window_size) // slide + 1, 1)
+
+        # FNR: fraction of windows that predict 0 on a positive clip,
+        # using expected window count as denominator (not submitted count)
+        n_missed = int((preds != 1).sum())
+        fnr = n_missed / expected_n_win
         fnrs.append(fnr)
 
         # Earliest detection: first window index where prediction == 1
         first_correct = next((i for i, p in enumerate(preds) if p == true_label), None)
-        video_pred = int(Counter(preds).most_common(1)[0][0])
+        # Majority vote with tie-breaking: predict 1
+        counts = Counter(preds)
+        video_pred = 1 if counts[1] >= counts[0] else 0
         if first_correct is not None and video_pred == true_label:
             # Frame index of the end of that first correct window
             detected_at = first_correct * slide + window_size
@@ -265,12 +284,24 @@ def main():
     missing_vids = gt_keys - pred_keys
     if missing_vids:
         print(f"[WARN] {len(missing_vids)} ground-truth videos have no predictions — "
-              "they will count as all-zero windows.")
+              "imputing a single all-zero window for each.")
+        imputed_rows = []
+        for pid, vid in missing_vids:
+            row = {"participant_id": str(pid), "video_id": str(vid),
+                   "window_id": 0, "y_pred": 0}
+            if has_proba:
+                row["y_prob_0"] = 1.0
+                row["y_prob_1"] = 0.0
+            imputed_rows.append(row)
+        pred_df = pd.concat([pred_df, pd.DataFrame(imputed_rows)], ignore_index=True)
+
     extra_vids = pred_keys - gt_keys
     if extra_vids:
         print(f"[WARN] {len(extra_vids)} submitted videos not in ground truth — ignored.")
-        pred_df = pred_df[pred_df.apply(
-            lambda r: (r.participant_id, r.video_id) in gt_keys, axis=1)]
+        valid_mask = pd.MultiIndex.from_arrays(
+            [pred_df.participant_id, pred_df.video_id]
+        ).isin(gt_keys)
+        pred_df = pred_df[valid_mask]
 
     # ── WINDOW-LEVEL ─────────────────────────────────────────────────────────
     # Join GT video label onto every window row
@@ -282,8 +313,15 @@ def main():
                              y_prob_win, level="window")
 
     # ── VIDEO-LEVEL — majority vote across windows ────────────────────────────
+    # Tie-breaking: predict 1 (conservative — flags a potential error/bad outcome).
+    def _majority_vote(x):
+        counts = Counter(x)
+        if counts[1] >= counts[0]:
+            return 1
+        return 0
+
     vid_pred = (win.groupby(["participant_id", "video_id"])["y_pred"]
-                   .agg(lambda x: int(Counter(x).most_common(1)[0][0]))
+                   .agg(_majority_vote)
                    .reset_index().rename(columns={"y_pred": "y_pred_vid"}))
     vid = vid_pred.merge(gt_video[["participant_id", "video_id", "y_true"]],
                          on=["participant_id", "video_id"])

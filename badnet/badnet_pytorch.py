@@ -72,74 +72,6 @@ def load_label_mapping(csv_path):
     return label_mapping
 
 
-class BadNetDataset(Dataset):
-    """Dataset for loading robot behavior images with frame-to-label mapping."""
-    
-    def __init__(self, participants, image_base_path, csv_path, transform=None, cache_images=True):
-        self.image_base_path = image_base_path
-        self.transform = transform
-        self.cache_images = cache_images
-        self.image_cache = {}
-        
-        # Load label mapping from CSV
-        self.label_mapping = load_label_mapping(csv_path)
-        
-        # Scan images and build samples list
-        self.samples = []
-        for participant in participants:
-            participant_dir = os.path.join(image_base_path, participant)
-            
-            if not os.path.exists(participant_dir):
-                print(f"Warning: Participant directory not found: {participant_dir}")
-                continue
-            
-            # Get all image files
-            image_files = [f for f in os.listdir(participant_dir) if f.endswith('.png')]
-            
-            for img_file in image_files:
-                q_id, label_from_filename, frame_num = parse_image_filename(img_file)
-                
-                if q_id is None:
-                    print(f"Warning: Could not parse filename: {img_file}")
-                    continue
-                
-                # Look up label from CSV
-                key = (participant, q_id)
-                if key in self.label_mapping:
-                    label = self.label_mapping[key]
-                    image_path = os.path.join(participant_dir, img_file)
-                    self.samples.append((image_path, label))
-                else:
-                    print(f"Warning: No label found for participant {participant}, {q_id}")
-
-        if cache_images:
-            print("Caching images in memory...")
-            for i, (image_path, label) in enumerate(self.samples):
-                image = Image.open(image_path).convert('RGB')
-                if transform:
-                    image = transform(image)
-                self.image_cache[image_path] = image
-                if (i + 1) % 1000 == 0:
-                    print(f"Cached {i + 1}/{len(self.samples)} images")
-
-        print(f"Loaded {len(self.samples)} samples from {len(participants)} participants")
-    
-    def __len__(self):
-        return len(self.samples)
-    
-    def __getitem__(self, idx):
-        image_path, label = self.samples[idx]
-        
-        if self.cache_images and image_path in self.image_cache:
-            image = self.image_cache[image_path]
-        else:
-            image = Image.open(image_path).convert('RGB')
-            if self.transform:
-                image = self.transform(image)
-        
-        return image, label
-
-
 class BadNetDatasetWithAugmentation(Dataset):
     """Dataset that includes both original and augmented samples."""
     
@@ -174,8 +106,8 @@ class BadNetDatasetWithAugmentation(Dataset):
                 print(f"Warning: Participant directory not found: {participant_dir}")
                 continue
             
-            # Get all image files
-            image_files = [f for f in os.listdir(participant_dir) if f.endswith('.png')]
+            # Get all image files, sorted by name to ensure consistent frame order
+            image_files = sorted([f for f in os.listdir(participant_dir) if f.endswith('.png')])
             
             for img_file in image_files:
                 q_id, label_from_filename, frame_num = parse_image_filename(img_file)
@@ -230,14 +162,9 @@ class BadNetDatasetNPY(Dataset):
         # Load label mapping from CSV
         self.label_mapping = load_label_mapping(csv_path)
 
-        # Augmentation for tensor data (if needed)
+        # Augmentation for tensor data: only horizontal flip is applied in __getitem__
+        # (NPY arrays are already normalized, so colour jitter cannot be applied)
         self.use_augmentation = num_augmentations > 0
-        if self.use_augmentation:
-            # Note: For tensor augmentation, we need different transforms
-            self.aug_transform = transforms.Compose([
-                transforms.RandomHorizontalFlip(p=0.5),
-                transforms.ColorJitter(brightness=0.3, contrast=0.3, saturation=0.2, hue=0.1),
-            ])
         
         # Scan images and build samples list
         self.samples = []
@@ -249,8 +176,8 @@ class BadNetDatasetNPY(Dataset):
                 print(f"Warning: Participant directory not found: {participant_dir}")
                 continue
             
-            # Get all NPY files
-            npy_files = [f for f in os.listdir(participant_dir) if f.endswith('.npy')]
+            # Get all NPY files, sorted by name to ensure consistent frame order
+            npy_files = sorted([f for f in os.listdir(participant_dir) if f.endswith('.npy')])
             
             for npy_file in npy_files:
                 # Parse filename (same pattern but with .npy extension)

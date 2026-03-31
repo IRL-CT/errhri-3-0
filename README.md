@@ -119,11 +119,11 @@ Detailed per-video statistics (participant, split, video name, label, and durati
 
 Webcam recordings of **29 participants'** anticipatory reactions while predicting whether **30 action scenarios** would end well or poorly — captured *before* outcomes were revealed (average clip: ~1.95 s). Stimuli videos also provided (30 `.mp4` files).
 
-**Labels:** Binary — participant's *predicted* outcome: `1` (good outcome expected, i.e. "Well") vs. `0` (bad outcome expected, i.e. "Poorly"). Labels reflect participant prediction, not actual outcome.
+**Labels:** Binary — participant's *predicted* outcome: `0` (good outcome expected, i.e. "Well") vs. `1` (bad outcome expected, i.e. "Poorly"). Labels reflect participant prediction, not actual outcome.
 
 #### Data Splits
 
-| Split | Participants | Total videos | Label 0 (Poorly) | Label 1 (Well) |
+| Split | Participants | Total videos | Label 0 (Well) | Label 1 (Poorly) |
 |---|---|---|---|---|
 | trainval | 23 | 685 | 360 (52.6%) | 325 (47.4%) |
 | test | 6 | 180 | 103 (57.2%) | 77 (42.8%) |

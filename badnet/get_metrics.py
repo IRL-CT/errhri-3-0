@@ -203,8 +203,9 @@ def calculate_temporal_window_metrics(y_pred, y_true, y_proba, participant_ids, 
                 window_prediction = np.argmax(avg_proba)
                 window_confidence = np.max(avg_proba)
             else:
-                # Use mode of frame predictions
-                window_prediction = Counter(window_pred_frames).most_common(1)[0][0]
+                # Use majority vote with tie-breaking: predict 1
+                counts = Counter(window_pred_frames)
+                window_prediction = 1 if counts[1] >= counts[0] else 0
                 window_confidence = None
             
             window_predictions.append(window_prediction)
@@ -218,8 +219,9 @@ def calculate_temporal_window_metrics(y_pred, y_true, y_proba, participant_ids, 
         # METRIC 1: VIDEO-LEVEL ACCURACY (Mode prediction across all windows)
         # =============================================================================
         
-        # Get the mode prediction across all windows
-        mode_prediction = Counter(window_predictions).most_common(1)[0][0]
+        # Get the majority vote across all windows with tie-breaking: predict 1
+        counts = Counter(window_predictions)
+        mode_prediction = 1 if counts[1] >= counts[0] else 0
         video_level_correct = (mode_prediction == true_video_label)
         
         video_level_results.append({

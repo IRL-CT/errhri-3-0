@@ -90,6 +90,12 @@ def parse_args():
     return parser.parse_args()
 
 
+def _majority_vote(preds):
+    """Majority vote with tie-breaking: predict 1 (conservative — flags error/bad outcome)."""
+    counts = Counter(preds)
+    return 1 if counts[1] >= counts[0] else 0
+
+
 def build_official_submission(all_preds, all_labels, all_probs,
                                all_participant_ids, all_video_ids,
                                window_size, slide_length):
@@ -137,7 +143,7 @@ def build_official_submission(all_preds, all_labels, all_probs,
                 y_prob_0 = float(avg_probs[0])
                 y_prob_1 = float(avg_probs[1])
             else:
-                y_pred   = int(Counter(w_preds).most_common(1)[0][0])
+                y_pred   = _majority_vote(w_preds)
                 y_prob_0 = None
                 y_prob_1 = None
 
@@ -194,7 +200,7 @@ def run_official_eval(all_preds, all_labels, all_probs,
     # ── video-level (majority vote) ───────────────────────────────────────────
     vid_pred = (
         win.groupby(['participant_id', 'video_id'])['y_pred']
-           .agg(lambda x: int(Counter(x).most_common(1)[0][0]))
+           .agg(_majority_vote)
            .reset_index()
            .rename(columns={'y_pred': 'y_pred_vid'})
     )

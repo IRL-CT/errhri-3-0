@@ -82,7 +82,9 @@ Teams are ranked by macro F1. In case of a tie, balanced accuracy is the tiebrea
 | Metric | Description | Better = |
 |---|---|---|
 | **Earliest Detection Time** | Average % of clip elapsed at the first correct window prediction, over correctly classified positive-class clips | Lower |
-| **FNR per video** | Average fraction of windows that miss the positive label, over all positive-class clips | Lower |
+| **FNR per video** | Average fraction of windows that miss the positive label, over all positive-class clips. The denominator is the **expected** number of windows given `n_frames`, `window_size`, and `slide` — not the number of windows submitted. | Lower |
+
+> **Track 2 note:** Bad Idea clips are very short (~1.95 s, ~58 frames). Temporal metrics are reported for completeness and cross-track comparability, but their interpretation differs from Track 1: because clips are brief and the task captures a participant's instantaneous anticipatory state rather than an unfolding event, "earliest detection time" and FNR reflect model consistency across windows rather than a meaningful temporal detection trajectory. Participants should not over-optimise for these metrics on Track 2.
 
 ---
 
@@ -108,10 +110,14 @@ python eval.py --gt gt.csv --pred sub.csv --track 1 \
 
 ## Handling Missing or Extra Predictions
 
-- Videos in the ground truth with no submitted predictions are treated as all-zero windows.
+- Videos in the ground truth with no submitted predictions are imputed as a **single all-zero window** (y_pred=0, y_prob_0=1.0, y_prob_1=0.0). This counts as a missed positive for any failure/poorly video and contributes to all metric computations.
 - Videos in the submission not present in the ground truth are ignored.
 
 Ensure your submission covers all test-set videos to avoid unnecessary penalties.
+
+### Video-level majority vote tie-breaking
+
+When a clip has equal numbers of windows predicting 0 and 1, the evaluator predicts **1** (failure / poorly). This is a conservative, safety-oriented convention: when in doubt, flag a potential error or bad outcome.
 
 ---
 
