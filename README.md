@@ -202,6 +202,40 @@ Evaluation scripts will be released in this repository by **May 1, 2026**.
 
 ---
 
+## Data Preparation
+
+The datasets are provided as raw `.mp4` video files. Before training with the baseline, you need to extract frames. A utility script is provided for the BAD dataset:
+
+```bash
+python utils/extract_frames.py                # both trainval and test splits
+python utils/extract_frames.py --split trainval
+python utils/extract_frames.py --no_npy       # PNG frames only
+python utils/extract_frames.py --no_frames    # NPY arrays only (frames must already exist)
+```
+
+This script extracts frames at **5 fps**, saves PNG frames and/or NPY arrays, and writes a `label_data.csv` to each output directory. The Bad Idea dataset is already provided as pre-extracted frames.
+
+After extraction, your data directory should look like:
+
+```
+<dataset_dir>/
+├── trainval/                  # raw videos (per participant)
+├── trainval_frames/           # extracted PNG frames
+│   ├── label_data.csv         # one row per frame: participant_id, q_id, label
+│   └── <participant_id>/
+│       └── q_<id>_main_<label>_5fps_frame<NNNN>.png
+├── trainval_npy/              # pre-processed NPY arrays (same structure as frames)
+│   ├── label_data.csv
+│   └── <participant_id>/
+│       └── q_<id>_main_<label>_5fps_frame<NNNN>.npy
+└── test/
+    └── ...
+```
+
+> **Note on `label_data.csv`:** This file contains **one row per frame** (not per video). All frames from the same video share the same label — this is by design, since the baseline dataset classes index individual frames during training.
+
+---
+
 ## Registration & Data Access
 
 The datasets contain non-anonymized visual data. To receive access, participants must:
@@ -232,10 +266,15 @@ _Baseline results to be added by May 1, 2026._
 │   ├── train_badnet.py        # Training script
 │   ├── get_metrics.py         # Evaluation metrics
 │   ├── create_image_splits.py # Data splitting utilities
-│   ├── resize_dataset.py      # Dataset preprocessing
+│   ├── resize_dataset.py      # Dataset preprocessing (frames → NPY)
+│   └── badnet.sub             # SLURM submission script
+├── utils/
+│   └── extract_frames.py      # Frame extraction from raw .mp4 videos (BAD dataset)
+├── eval.py                    # Official evaluation script
 ├── baddataset_stats.csv       # Per-video stats for BAD dataset (participant, split, video name, label, duration)
 ├── badidea_dataset_stats.csv  # Per-video stats for Bad Idea dataset (participant, split, video name, label, frame count)
 ├── BASELINE.md                # Baseline documentation
+├── EVALUATION.md              # Evaluation protocol and submission format
 ├── challenge_proposal.pdf     # Challenge proposal (Parreira et al., ICMI'26)
 └── LICENSE
 ```

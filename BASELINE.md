@@ -45,56 +45,63 @@ badnet/
 pip install torch torchvision numpy pandas scikit-learn pillow wandb tqdm
 ```
 
-### 2. Data Preparation
+### 2. Frame Extraction (BAD Dataset only)
 
-Organize your data as follows:
+The BAD dataset is provided as raw `.mp4` files. Extract frames before training:
+
+```bash
+python utils/extract_frames.py --split trainval
+python utils/extract_frames.py --split test
+```
+
+This extracts frames at **5 fps** and produces both PNG frames and NPY arrays, along with `label_data.csv` in each output directory. The Bad Idea dataset is already provided as pre-extracted frames — skip this step for Track 2.
+
+### 3. Data Layout
+
+After extraction, your data should be organised as:
 
 ```
-data/
-├── trainval/
+<dataset_dir>/
+├── trainval_frames/           # PNG frames
 │   ├── label_data.csv
-│   ├── participant_1/
-│   │   ├── video_001.mp4
-│   │   └── ...
-│   └── ...
-└── test/
-    ├── test_label_data.csv
-    └── ...
+│   └── <participant_id>/
+│       └── q_<id>_main_<label>_5fps_frame<NNNN>.png
+└── trainval_npy/              # pre-processed NPY arrays
+    ├── label_data.csv
+    └── <participant_id>/
+        └── q_<id>_main_<label>_5fps_frame<NNNN>.npy
 ```
 
-**CSV labels** — required columns:
+**`label_data.csv` columns:**
 - `participant_id`: Unique participant identifier
 - `q_id`: Scenario identifier (e.g., `q_1`, `q_2`)
 - `label`: Target classification label
 
-### 3. Basic Training
+> **Important:** `label_data.csv` contains **one row per frame**, not one row per video. All frames from the same video share the same label. The dataset classes in `badnet_pytorch.py` index individual frames during training.
+
+### 4. Basic Training
 
 ```bash
 cd badnet
-python train_badnet.py --csv_path ../data/trainval/label_data.csv \
-                       --image_base_path ../data/trainval \
+python train_badnet.py --csv_path <dataset_dir>/trainval_frames/label_data.csv \
+                       --image_base_path <dataset_dir>/trainval_frames \
                        --epochs 100 \
                        --batch_size 32
 ```
 
-### 4. Faster Training with NPY Format
+### 5. Faster Training with NPY Format
 
-Pre-process videos/images to NPY arrays for significantly faster data loading:
-
-```bash
-python resize_dataset.py
-```
-
-Then train using the pre-processed data:
+If you extracted NPY arrays in step 2 (or ran `resize_dataset.py` separately), train on the pre-processed data for significantly faster loading:
 
 ```bash
-python train_badnet.py --csv_path ../data/trainval/label_data.csv \
-                       --npy_base_path ../data/trainval_npy \
+cd badnet
+python train_badnet.py --csv_path <dataset_dir>/trainval_npy/label_data.csv \
+                       --npy_base_path <dataset_dir>/trainval_npy \
                        --use_npy \
                        --epochs 100
 ```
 
-### 5. SLURM (HPC clusters)
+### 6. SLURM (HPC clusters)
 
 A SLURM submission script is provided:
 

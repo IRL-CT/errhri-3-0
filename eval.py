@@ -34,9 +34,14 @@ Optional:
 Ground-truth CSV columns:
   participant_id, video_id, frame_id, y_true
 
+Window parameter constraints
+----------------------------
+  slide ≤ window_size  (both tracks)
+  window_size ≤ 2 × fps  (Track 1 only; fps declared by participant)
+
 Usage:
-  python eval.py --gt gt.csv --pred sub.csv --track 1 --window_size 5 --slide 1
-  python eval.py --gt gt.csv --pred sub.csv --track 2 --window_size 10 --slide 2 --out out.csv
+  python eval.py --gt gt.csv --pred sub.csv --track 1 --fps 5 --window_size 10 --slide 5
+  python eval.py --gt gt.csv --pred sub.csv --track 2 --fps 30 --window_size 10 --slide 2 --out out.csv
 """
 
 import argparse, sys, warnings
@@ -266,6 +271,7 @@ def main():
     parser.add_argument("--gt",          required=True,           help="Ground-truth CSV (frame-level)")
     parser.add_argument("--pred",        required=True,           help="Submission CSV (window-level)")
     parser.add_argument("--track",       required=True, type=int, choices=[1, 2])
+    parser.add_argument("--fps",         required=True, type=int, help="Frame rate used for feature extraction (declared by participant)")
     parser.add_argument("--window_size", required=True, type=int, help="Declared by participant")
     parser.add_argument("--slide",       required=True, type=int, help="Declared by participant")
     parser.add_argument("--out",         default=None,            help="Save per-video results CSV")
@@ -273,7 +279,22 @@ def main():
 
     gt_video           = load_ground_truth(args.gt)   # collapsed to video-level
     pred_df, has_proba = load_predictions(args.pred)
-    ws, sl             = args.window_size, args.slide
+    ws, sl, fps        = args.window_size, args.slide, args.fps
+
+    # Enforce window parameter constraints
+    if args.track == 1:
+        max_window = 2 * fps
+        if ws > max_window:
+            sys.exit(
+                f"[ERROR] window_size={ws} exceeds the 2-second limit at {fps} fps "
+                f"(max allowed for Track 1: {max_window} frames). "
+                "Reduce window_size or increase fps."
+            )
+    if sl > ws:
+        sys.exit(
+            f"[ERROR] slide={sl} is larger than window_size={ws}. "
+            "slide must be ≤ window_size to avoid skipping frames between windows."
+        )
 
     if not has_proba:
         print("[INFO] No y_prob_0/y_prob_1 columns — AUC will not be computed.")

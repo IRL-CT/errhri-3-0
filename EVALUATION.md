@@ -21,6 +21,21 @@ Metrics are reported at two levels: **window** and **video**.
 
 ---
 
+## Ground-Truth Format
+
+The organizer provides a frame-level ground-truth CSV used internally by `eval.py`. Participants do not submit this file — it is listed here for reference when running the evaluator locally with your own splits.
+
+| Column | Type | Description |
+|---|---|---|
+| `participant_id` | str | Participant identifier |
+| `video_id` | str | Video/scenario identifier (e.g., `q_6_main` or `QID106`) |
+| `frame_id` | int | 1-indexed frame number within the clip (one row per extracted frame) |
+| `y_true` | int | Ground-truth label for the clip (`0` or `1`). All frames within a clip share the same label. |
+
+`frame_id` counts extracted frames (at the fps used during extraction, e.g. 5 fps for the BAD dataset). It is used to compute the expected number of windows per clip and the earliest detection time metric.
+
+---
+
 ## Submission Format
 
 One CSV file per track. **One row per window** per `(participant_id, video_id)` clip.
@@ -35,8 +50,27 @@ One CSV file per track. **One row per window** per `(participant_id, video_id)` 
 | `y_prob_1` | float | optional | Predicted probability for class 1 |
 
 Participants must also **declare their window parameters** at submission time:
+- `fps`: frame rate at which features were extracted (e.g. `5`, `10`, `30`)
 - `window_size`: number of frames per window
-- `slide`: step size between windows
+- `slide`: step size between windows (in frames)
+
+### Window Parameter Constraints
+
+To ensure meaningful windowed evaluation, the following constraints are enforced:
+
+- **`slide ≤ window_size`** (both tracks) — the slide step may not be larger than the window; there must be no gap between consecutive windows.
+- **`window_size ≤ 2 × fps`** (Track 1 only) — for the BAD dataset, the window may span at most **2 seconds** of video, regardless of the extraction frame rate chosen. Track 2 (Bad Idea) clips are inherently short (~1 s) and are not subject to this cap.
+
+Examples for Track 1 at different frame rates:
+
+| fps | Max `window_size` |
+|---|---|
+| 5 | 10 frames |
+| 10 | 20 frames |
+| 15 | 30 frames |
+| 30 | 60 frames |
+
+Submissions that violate these constraints will be rejected by the evaluator.
 
 > **Note:** if `window_size=1` and `slide=1`, each window corresponds to a single frame, making this equivalent to frame-level prediction.
 
@@ -91,19 +125,19 @@ Teams are ranked by macro F1. In case of a tie, balanced accuracy is the tiebrea
 ## Running the Evaluator
 
 ```bash
-# Track 1
+# Track 1 (features extracted at 5 fps, 2-second window)
 python eval.py --gt ground_truth_track1.csv \
                --pred my_submission_track1.csv \
-               --track 1 --window_size 5 --slide 1
+               --track 1 --fps 5 --window_size 10 --slide 5
 
 # Track 2
 python eval.py --gt ground_truth_track2.csv \
                --pred my_submission_track2.csv \
-               --track 2 --window_size 10 --slide 2
+               --track 2 --fps 30 --window_size 10 --slide 2
 
 # Save per-video breakdown to CSV
 python eval.py --gt gt.csv --pred sub.csv --track 1 \
-               --window_size 5 --slide 1 --out per_video.csv
+               --fps 5 --window_size 10 --slide 5 --out per_video.csv
 ```
 
 ---
