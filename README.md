@@ -7,19 +7,6 @@ Official repository for the **ERR@HRI 3.0 Challenge** at [ICMI 2026](https://icm
 
 ---
 
-## Organizer TODO
-
-- [x] Website update and maintenance (Teresa)
-- [ ] Share Call for Participation (CfP)
-- [x] Repo maintenance (Teresa)
-- [x] Organize dataset and data agreement ("participant package") (Teresa)
-- [x] Create evaluation scripts (volunteer?)
-- [ ] Train and document baseline (volunteer?)
-- [ ] _(later)_ Verify participants' submissions
-- [ ] _(later)_ Draft challenge paper
-
----
-
 ## Challenge Overview
 
 ERR@HRI 3.0 addresses the problem of **multimodal error detection in human-robot interaction** by providing two complementary datasets that span the temporal spectrum of error management — from anticipatory responses *before* failures occur to reactive responses *during* observed errors.
@@ -246,7 +233,6 @@ _Baseline results to be added by May 1, 2026._
 │   ├── get_metrics.py         # Evaluation metrics
 │   ├── create_image_splits.py # Data splitting utilities
 │   ├── resize_dataset.py      # Dataset preprocessing
-│   └── badnet.sub             # SLURM submission script
 ├── baddataset_stats.csv       # Per-video stats for BAD dataset (participant, split, video name, label, duration)
 ├── badidea_dataset_stats.csv  # Per-video stats for Bad Idea dataset (participant, split, video name, label, frame count)
 ├── BASELINE.md                # Baseline documentation
