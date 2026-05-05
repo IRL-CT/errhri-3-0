@@ -1,0 +1,19 @@
+{
+  "dataset": "Bad Idea (Track 2)",
+  "model_type": "pretrained_resnet34",
+  "activation": "relu",
+  "kernel_size": 6,
+  "base_filters": 64,
+  "freeze_backbone": false,
+  "dropout": 0.7,
+  "batch_size": 64,
+  "epochs": 100,
+  "learning_rate": 0.001,
+  "use_npy": true,
+  "use_weighted_loss": true,
+  "num_augmentations": 3,
+  "window_size": 10,
+  "slide_length": 2,
+  "fps": 30,
+  "seed": 1369
+}

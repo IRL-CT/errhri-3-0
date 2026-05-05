@@ -1,0 +1,35 @@
+{
+  "dataset": "BAD (Track 1)",
+  "evaluation_set": "test",
+  "window_size": 5,
+  "slide_length": 2,
+  "fps": 5,
+  "video_level": {
+    "f1_macro": 0.5021,
+    "balanced_accuracy": 0.5041,
+    "f1_pos": 0.8916,
+    "f1_neg": 0.1127,
+    "precision": 0.8691,
+    "recall": 0.9152,
+    "accuracy": 0.8067,
+    "auc": 0.5542,
+    "n_videos": 326,
+    "n_pos": 283,
+    "n_neg": 43
+  },
+  "window_level": {
+    "f1_macro": 0.5226,
+    "balanced_accuracy": 0.5221,
+    "f1_pos": 0.8548,
+    "f1_neg": 0.1905,
+    "precision": 0.8319,
+    "recall": 0.8789,
+    "accuracy": 0.7537,
+    "auc": 0.5386,
+    "n_windows": 11837
+  },
+  "temporal": {
+    "earliest_detection_pct": 8.79,
+    "avg_fnr_per_positive_video": 0.1224
+  }
+}

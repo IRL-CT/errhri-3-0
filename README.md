@@ -252,22 +252,36 @@ Each team may submit up to **3 times** on the test set. Participating teams must
 
 ## Baseline
 
-A baseline implementation is provided in the [`badnet/`](badnet/) directory. See [BASELINE.md](BASELINE.md) for full documentation, quick-start instructions, and results.
+A baseline implementation is provided in the [`baseline/`](baseline/) directory. See [BASELINE.md](BASELINE.md) for full documentation, quick-start instructions, and results.
 
-_Baseline results to be added by May 1, 2026._
+Pretrained baseline models are provided for both tracks:
+
+- **Track 1 (BAD):** BadNetCNN — macro F1 **0.502** on the held-out test set. Weights in [`baseline/models/bad/`](baseline/models/bad/).
+- **Track 2 (Bad Idea):** ResNet-34 fine-tuned — macro F1 **0.561** on the held-out test set. Weights in [`baseline/models/badidea/`](baseline/models/badidea/).
 
 ---
 
 ## Repository Structure
 
 ```
-├── badnet/                     # Baseline implementation
+├── baseline/                   # Baseline implementation (start here)
 │   ├── badnet_pytorch.py      # Core models and dataset classes
 │   ├── train_badnet.py        # Training script
 │   ├── get_metrics.py         # Evaluation metrics
 │   ├── create_image_splits.py # Data splitting utilities
 │   ├── resize_dataset.py      # Dataset preprocessing (frames → NPY)
-│   └── badnet.sub             # SLURM submission script
+│   ├── train_final.py         # Train on full trainval + generate test predictions
+│   └── models/
+│       ├── bad/               # Pretrained Track 1 baseline model
+│       │   ├── model.pt
+│       │   ├── model_config.json
+│       │   ├── results.json
+│       │   └── training_history.json
+│       └── badidea/           # Pretrained Track 2 baseline model
+│           ├── model.pt
+│           ├── model_config.json
+│           ├── results.json
+│           └── training_history.json
 ├── utils/
 │   └── extract_frames.py      # Frame extraction from raw .mp4 videos (BAD dataset)
 ├── eval.py                    # Official evaluation script

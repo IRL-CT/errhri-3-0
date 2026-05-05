@@ -1,0 +1,19 @@
+{
+  "dataset": "BAD (Track 1)",
+  "model_type": "original",
+  "activation": "sigmoid",
+  "kernel_size": 8,
+  "base_filters": 64,
+  "freeze_backbone": false,
+  "dropout": 0.7,
+  "batch_size": 32,
+  "epochs": 350,
+  "learning_rate": 0.0001,
+  "use_npy": true,
+  "use_weighted_loss": true,
+  "num_augmentations": 2,
+  "window_size": 5,
+  "slide_length": 2,
+  "fps": 5,
+  "seed": 1369
+}

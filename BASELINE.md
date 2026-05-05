@@ -6,25 +6,75 @@ This document describes the baseline implementation provided for the ERR@HRI 3.0
 
 ## Baseline Results
 
-_To be filled in by May 1, 2026._
+Performance is reported on the **held-out test set**. Primary ranking metric is **macro F1 at video level** (majority vote across windows).
 
-| Track | Model | F1-score | Accuracy | AUC |
-|---|---|---|---|---|
-| Track 1 (BAD) | — | — | — | — |
-| Track 2 (Bad Idea) | — | — | — | — |
+| Track | Model | Backbone | F1-macro (vid) | Balanced Acc (vid) | AUC (vid) | Det. Time |
+|---|---|---|---|---|---|---|
+| Track 1 (BAD) | BadNetCNN | — | **0.502** | 0.504 | 0.554 | 8.8% |
+| Track 2 (Bad Idea) | BadNetPretrained | ResNet-34 | **0.561** | 0.572 | 0.550 | 35.6% |
+
+### Track 1 — Baseline Model Configuration
+
+| Hyperparameter | Value |
+|---|---|
+| Architecture | `original` (BadNetCNN) |
+| Activation | sigmoid |
+| Kernel size | 8 |
+| Base filters | 64 |
+| Freeze backbone | No |
+| Dropout | 0.7 |
+| Learning rate | 0.0001 |
+| Batch size | 32 |
+| Epochs | 350 |
+| Weighted loss | Yes |
+| Augmentations | 2× per frame |
+| Window size | 5 frames |
+| Slide | 2 frames |
+| Seed | 1369 |
+
+Full results (video level, window level, and temporal metrics) and pretrained weights are available in [`baseline/models/bad/`](baseline/models/bad/).
+
+### Track 2 — Baseline Model Configuration
+
+| Hyperparameter | Value |
+|---|---|
+| Architecture | `pretrained_resnet34` |
+| Freeze backbone | No |
+| Dropout | 0.7 |
+| Learning rate | 0.001 |
+| Batch size | 64 |
+| Epochs | 100 |
+| Weighted loss | Yes |
+| Augmentations | 3× per frame |
+| Window size | 10 frames |
+| Slide | 2 frames |
+| Seed | 1369 |
+
+Full results (video level, window level, and temporal metrics) and pretrained weights are available in [`baseline/models/badidea/`](baseline/models/badidea/).
 
 ---
 
 ## Repository Structure
 
 ```
-badnet/
+baseline/
 ├── badnet_pytorch.py      # Core models and dataset classes
-├── train_badnet.py        # Training script with W&B integration
+├── train_badnet.py        # Cross-validation training script with W&B integration
+├── train_final.py         # Train on full trainval set + generate test predictions
 ├── get_metrics.py         # Evaluation metrics utilities
 ├── create_image_splits.py # Data splitting utilities
 ├── resize_dataset.py      # Dataset preprocessing (image → NPY)
-└── badnet.sub             # SLURM submission script
+└── models/
+    ├── bad/
+    │   ├── model.pt              # Pretrained weights (Track 1 baseline)
+    │   ├── model_config.json     # Full hyperparameter configuration
+    │   ├── training_history.json # Per-epoch training loss and accuracy
+    │   └── results.json          # Full evaluation results on the test set
+    └── badidea/
+        ├── model.pt              # Pretrained weights (Track 2 baseline)
+        ├── model_config.json     # Full hyperparameter configuration
+        ├── training_history.json # Per-epoch training loss and accuracy
+        └── results.json          # Full evaluation results on the test set
 ```
 
 ---
@@ -82,7 +132,7 @@ After extraction, your data should be organised as:
 ### 4. Basic Training
 
 ```bash
-cd badnet
+cd baseline
 python train_badnet.py --csv_path <dataset_dir>/trainval_frames/label_data.csv \
                        --image_base_path <dataset_dir>/trainval_frames \
                        --epochs 100 \
@@ -94,22 +144,117 @@ python train_badnet.py --csv_path <dataset_dir>/trainval_frames/label_data.csv \
 If you extracted NPY arrays in step 2 (or ran `resize_dataset.py` separately), train on the pre-processed data for significantly faster loading:
 
 ```bash
-cd badnet
+cd baseline
 python train_badnet.py --csv_path <dataset_dir>/trainval_npy/label_data.csv \
                        --npy_base_path <dataset_dir>/trainval_npy \
                        --use_npy \
                        --epochs 100
 ```
 
-### 6. SLURM (HPC clusters)
+### 6. Reproducing the Baseline Models
 
-A SLURM submission script is provided:
+To train the Track 1 baseline configuration from scratch using cross-validation:
 
 ```bash
-sbatch badnet/badnet.sub
+cd baseline
+python train_badnet.py \
+    --csv_path       <dataset_dir>/trainval_npy/label_data.csv \
+    --npy_base_path  <dataset_dir>/trainval_npy \
+    --use_npy --cache_images \
+    --model_type     original \
+    --activation     sigmoid \
+    --kernel_size    8 \
+    --base_filters   64 \
+    --dropout        0.7 \
+    --batch_size     32 \
+    --epochs         350 \
+    --learning_rate  0.0001 \
+    --use_weighted_loss \
+    --num_augmentations 2 \
+    --window_size    5 \
+    --slide_length   2 \
+    --seed           1369
 ```
 
-Edit `badnet.sub` to match your cluster configuration. **Do not hardcode API keys** — pass `WANDB_API_KEY` as an environment variable instead.
+To train the Track 2 baseline configuration from scratch using cross-validation:
+
+```bash
+cd baseline
+python train_badnet.py \
+    --csv_path       <dataset_dir>/trainval_npy/label_data.csv \
+    --npy_base_path  <dataset_dir>/trainval_npy \
+    --use_npy --cache_images \
+    --model_type     pretrained_resnet34 \
+    --dropout        0.7 \
+    --batch_size     64 \
+    --epochs         100 \
+    --learning_rate  0.001 \
+    --use_weighted_loss \
+    --num_augmentations 3 \
+    --window_size    10 \
+    --slide_length   2 \
+    --seed           1369
+```
+
+### 7. Training on the Full Trainval Set
+
+`train_final.py` trains on all trainval participants (no held-out fold) and generates a ready-to-submit prediction file for the test set.
+
+**Track 1 (BAD dataset):**
+
+```bash
+cd baseline
+python train_final.py \
+    --run_name       my_model \
+    --output_dir     ./runs/my_model \
+    --track          1 \
+    --csv_path       <dataset_dir>/trainval_npy/label_data.csv \
+    --npy_base_path  <dataset_dir>/trainval_npy \
+    --test_npy_base_path <dataset_dir>/test_npy \
+    --test_csv_path  <dataset_dir>/test_npy/label_data.csv \
+    --use_npy --cache_images \
+    --model_type     original \
+    --activation     sigmoid \
+    --kernel_size    8 \
+    --base_filters   64 \
+    --dropout        0.7 \
+    --batch_size     32 \
+    --epochs         350 \
+    --learning_rate  0.0001 \
+    --use_weighted_loss \
+    --num_augmentations 2 \
+    --window_size    5 \
+    --slide_length   2 \
+    --fps            5 \
+    --seed           1369
+```
+
+**Track 2 (Bad Idea dataset):**
+
+```bash
+cd baseline
+python train_final.py \
+    --run_name       my_model \
+    --output_dir     ./runs/my_model \
+    --track          2 \
+    --csv_path       <dataset_dir>/trainval_npy/label_data.csv \
+    --npy_base_path  <dataset_dir>/trainval_npy \
+    --test_npy_base_path <dataset_dir>/test_npy \
+    --use_npy --cache_images \
+    --model_type     pretrained_resnet34 \
+    --dropout        0.7 \
+    --batch_size     64 \
+    --epochs         100 \
+    --learning_rate  0.001 \
+    --use_weighted_loss \
+    --num_augmentations 3 \
+    --window_size    10 \
+    --slide_length   2 \
+    --fps            30 \
+    --seed           1369
+```
+
+Both commands save `model.pt`, `config.json`, `test_predictions.csv` (window-level, ready for `eval.py`), and `eval_results.json` to `--output_dir`.
 
 ---
 
