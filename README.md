@@ -175,12 +175,12 @@ Participants are encouraged to explore transfer learning across datasets (e.g., 
 
 Models are evaluated on multiple metrics:
 
-- **Offline:** F1-score (primary), Accuracy, AUC
-- **Windowed predictions:** Fixed-length sliding windows; a video is correctly classified if *any* window predicts the correct label
-- **Earliest Detection Time:** For correctly classified videos, percentage of video elapsed before first correct prediction (lower is better)
-- **False Negative Rate per video:** Count of windows that "miss" positive predictions in error/bad-outcome videos
+- **Primary metrics differ by track:** Track 1 ranks by macro F1 (video level, majority vote; balanced accuracy as tiebreaker). Track 2 ranks by AUC-ROC (video level, max `y_prob_1` across windows).
+- **Windowed predictions:** Fixed-length sliding windows; video-level label derived by majority vote (Track 1) or max probability score (Track 2)
+- **Earliest Detection Time:** Average % of clip elapsed at first correct window prediction (positive-class clips only; lower is better)
+- **False Negative Rate per video:** Average fraction of windows missing the positive label, over all positive-class clips
 
-Teams are ranked separately per track based on F1-score. Winners selected for: Track 1, Track 2, Best Overall Performance, and Best Cross-Dataset Generalization.
+Teams are ranked separately per track. Winners selected for: Track 1, Track 2, and Best Cross-Dataset Generalization.
 
 Evaluation scripts will be released in this repository by **May 1, 2026**.
 
@@ -257,7 +257,7 @@ A baseline implementation is provided in the [`baseline/`](baseline/) directory.
 Pretrained baseline models are provided for both tracks:
 
 - **Track 1 (BAD):** BadNetCNN — macro F1 **0.502** on the held-out test set. Weights in [`baseline/models/bad/`](baseline/models/bad/).
-- **Track 2 (Bad Idea):** ResNet-34 fine-tuned — macro F1 **0.561** on the held-out test set. Weights in [`baseline/models/badidea/`](baseline/models/badidea/).
+- **Track 2 (Bad Idea):** ResNet-34 fine-tuned — AUC-ROC **0.564** on the held-out test set (primary metric for Track 2). Weights in [`baseline/models/badidea/`](baseline/models/badidea/).
 
 ---
 

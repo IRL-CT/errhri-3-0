@@ -208,7 +208,7 @@ def run_inference(model, loader, device):
             np.array(all_pids), np.array(all_vids))
 
 
-def compute_eval_results(pred_df, gt_video_df, window_size, slide_length):
+def compute_eval_results(pred_df, gt_video_df, window_size, slide_length, track=2):
     """Compute all official ERR@HRI metrics and return as a JSON-serialisable dict."""
     has_proba = 'y_prob_1' in pred_df.columns
 
@@ -226,8 +226,10 @@ def compute_eval_results(pred_df, gt_video_df, window_size, slide_length):
 
     y_prob_vid = None
     if has_proba:
+        # Track 2 primary: max y_prob_1 per video; Track 1: mean (secondary AUC)
+        agg_fn = 'max' if track == 2 else 'mean'
         vid_prob = (win.groupby(['participant_id', 'video_id'])['y_prob_1']
-                       .mean().reset_index()
+                       .agg(agg_fn).reset_index()
                        .rename(columns={'y_prob_1': 'y_prob_1_vid'}))
         vid = vid.merge(vid_prob, on=['participant_id', 'video_id'])
         y_prob_vid = vid['y_prob_1_vid'].values
@@ -480,7 +482,8 @@ def main():
     pred_df.to_csv(pred_csv_path, index=False)
     print(f'Saved predictions → {pred_csv_path}  ({len(pred_df)} windows)')
 
-    results = compute_eval_results(pred_df, gt_video_df, args.window_size, args.slide_length)
+    results = compute_eval_results(pred_df, gt_video_df, args.window_size, args.slide_length,
+                                   track=args.track)
     results['run_name'] = args.run_name
     results['config']   = config
 
@@ -490,6 +493,9 @@ def main():
 
     print(f'\n{"="*70}')
     print(f'TEST RESULTS  —  {args.run_name}')
+    if args.track == 2:
+        auc = results["video"].get("auc")
+        print(f'  AUC-ROC   (video, primary): {auc:.4f}' if auc is not None else '  AUC-ROC: N/A (no probabilities)')
     print(f'  F1 macro  (video): {results["f1_macro_vid"]:.4f}')
     print(f'  Bal. acc  (video): {results["balanced_acc_vid"]:.4f}')
     if results["temporal"]["det_pct"] is not None:

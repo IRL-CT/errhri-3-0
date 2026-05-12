@@ -6,12 +6,12 @@ This document describes the baseline implementation provided for the ERR@HRI 3.0
 
 ## Baseline Results
 
-Performance is reported on the **held-out test set**. Primary ranking metric is **macro F1 at video level** (majority vote across windows).
+Performance is reported on the **held-out test set**. Primary ranking metrics differ by track: **macro F1** for Track 1 (video level, majority vote), **AUC-ROC** for Track 2 (video level, max `y_prob_1` across windows).
 
-| Track | Model | Backbone | F1-macro (vid) | Balanced Acc (vid) | AUC (vid) | Det. Time |
+| Track | Model | Backbone | Primary Metric (vid) | F1-macro (vid) | Balanced Acc (vid) | Det. Time |
 |---|---|---|---|---|---|---|
-| Track 1 (BAD) | BadNetCNN | — | **0.502** | 0.504 | 0.554 | 8.8% |
-| Track 2 (Bad Idea) | BadNetPretrained | ResNet-34 | **0.561** | 0.572 | 0.550 | 35.6% |
+| Track 1 (BAD) | BadNetCNN | — | F1 **0.502** | 0.502 | 0.504 | 8.8% |
+| Track 2 (Bad Idea) | BadNetPretrained | ResNet-34 | AUC **0.564** | 0.561 | 0.572 | 35.6% |
 
 ### Track 1 — Baseline Model Configuration
 

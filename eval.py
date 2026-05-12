@@ -9,17 +9,21 @@ identical to the video label.
 
 Metrics are reported at two levels:
   1. Window level  — one prediction per window
-  2. Video level   — majority vote across windows per (participant, video)
+  2. Video level   — track-specific aggregation (see below)
 
-Co-primary ranking metrics (video level):
-  1. Macro F1           — equally weights both classes
-  2. Balanced Accuracy  — mean recall per class; robust to imbalance
+Primary ranking metrics differ by track:
+  Track 1 (BAD):       Co-primary — Macro F1 and Balanced Accuracy (video level,
+                        majority vote; balanced accuracy is the tiebreaker)
+  Track 2 (Bad Idea):  AUC-ROC (video level, max y_prob_1 across windows per clip;
+                        rewards models that fire confidently on the anticipatory signal
+                        even if it appears in only one or two windows)
 
 Additional temporal metrics (video level):
   - Earliest Detection Time : % of video elapsed at first correct window
                               (lower is better; reported for positive videos only)
   - FNR per video           : fraction of windows that miss the positive label,
-                              averaged over positive-class videos
+                              averaged over positive-class videos (denominator is
+                              expected window count, not submitted count)
 
 Label conventions
 -----------------
@@ -28,8 +32,8 @@ Label conventions
 
 Submission CSV columns (required):
   participant_id, video_id, window_id, y_pred
-Optional:
-  y_prob_0, y_prob_1   (enables AUC-ROC)
+Required for Track 2 (needed for primary AUC metric):
+  y_prob_0, y_prob_1
 
 Ground-truth CSV columns:
   participant_id, video_id, frame_id, y_true
@@ -211,23 +215,32 @@ def compute_temporal_metrics(pred_df, gt_video, window_size, slide):
 # Display
 # ---------------------------------------------------------------------------
 
-def print_block(m, label_0, label_1, primary=False):
-    star = "  ★" if primary else "   "
-    tag  = " [CO-PRIMARY]" if primary else ""
+def print_block(m, label_0, label_1, track=1):
+    # Track 1: F1 macro and balanced accuracy are co-primary
+    # Track 2: AUC-ROC is primary
+    if track == 1:
+        f1_star, f1_tag   = "  ★", " [CO-PRIMARY]"
+        bal_star, bal_tag = "  ★", " [CO-PRIMARY]"
+        auc_star, auc_tag = "   ", ""
+    else:
+        f1_star, f1_tag   = "   ", ""
+        bal_star, bal_tag = "   ", ""
+        auc_star, auc_tag = "  ★", " [PRIMARY]"
+
     print(f"  n={m['n']}  ({label_1}: {m['n_pos']}, {label_0}: {m['n_neg']})")
     print(f"  Confusion matrix (rows=true, cols=pred):")
     print(f"             {label_0:>10}  {label_1:>10}")
     print(f"  {label_0:>10}  {m['tn']:>10}  {m['fp']:>10}")
     print(f"  {label_1:>10}  {m['fn']:>10}  {m['tp']:>10}")
-    print(f"{star} F1 macro{tag}         : {m['f1_macro']:.4f}")
-    print(f"{star} Balanced Accuracy{tag}: {m['balanced_accuracy']:.4f}")
+    print(f"{f1_star} F1 macro{f1_tag}         : {m['f1_macro']:.4f}")
+    print(f"{bal_star} Balanced Accuracy{bal_tag}: {m['balanced_accuracy']:.4f}")
     print(f"   F1 ({label_1:>8})              : {m['f1_pos']:.4f}")
     print(f"   F1 ({label_0:>8})              : {m['f1_neg']:.4f}")
     print(f"   Precision  ({label_1:>8})       : {m['precision']:.4f}")
     print(f"   Recall     ({label_1:>8})       : {m['recall']:.4f}")
     print(f"   Accuracy                       : {m['accuracy']:.4f}")
     if m["auc"] is not None:
-        print(f"   AUC-ROC                        : {m['auc']:.4f}")
+        print(f"{auc_star} AUC-ROC{auc_tag}                    : {m['auc']:.4f}")
 
 
 def print_report(track, ws, sl, m_win, m_vid, det_pct, avg_fnr, label_0, label_1):
@@ -238,10 +251,13 @@ def print_report(track, ws, sl, m_win, m_vid, det_pct, avg_fnr, label_0, label_1
     print(sep)
 
     print(f"\n── WINDOW LEVEL  (size={ws}, slide={sl}) ──────────────────")
-    print_block(m_win, label_0, label_1)
+    print_block(m_win, label_0, label_1, track=track)
 
-    print(f"\n── VIDEO LEVEL  (majority vote across windows) ────────────")
-    print_block(m_vid, label_0, label_1, primary=True)
+    if track == 2:
+        print(f"\n── VIDEO LEVEL  (majority vote for F1; max y_prob_1 for AUC) ──")
+    else:
+        print(f"\n── VIDEO LEVEL  (majority vote across windows) ────────────")
+    print_block(m_vid, label_0, label_1, track=track)
 
     print(f"\n── TEMPORAL METRICS  (positive-class videos) ──────────────")
     if not np.isnan(det_pct):
@@ -349,8 +365,11 @@ def main():
 
     y_prob_vid = None
     if has_proba:
+        # Track 2 primary: max y_prob_1 per video (rewards confident anticipatory signal)
+        # Track 1: mean y_prob_1 per video (secondary AUC)
+        agg_fn = "max" if args.track == 2 else "mean"
         vid_prob = (win.groupby(["participant_id", "video_id"])["y_prob_1"]
-                       .mean().reset_index()
+                       .agg(agg_fn).reset_index()
                        .rename(columns={"y_prob_1": "y_prob_1_vid"}))
         vid = vid.merge(vid_prob, on=["participant_id", "video_id"])
         y_prob_vid = vid["y_prob_1_vid"].values
