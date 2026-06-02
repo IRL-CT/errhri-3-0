@@ -64,6 +64,20 @@ datasets/
 *.csv
 *.npy
 
+# Repo-level CSVs that SHOULD be tracked
+!baddataset_stats.csv
+!badidea_dataset_stats.csv
+!submission_instructions/test_video_list_track1.csv
+!submission_instructions/test_video_list_track2.csv
+
+# Organizer-only files — ground truth and evaluation outputs
+# (keep these outside the repo; never commit GT labels)
+ground_truth*.csv
+*_gt.csv
+gt_*.csv
+per_video_results*.csv
+eval_output*.csv
+
 # Model checkpoints
 checkpoints/
 output/

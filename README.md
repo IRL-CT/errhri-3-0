@@ -248,6 +248,8 @@ The datasets contain non-anonymized visual data. To receive access, participants
 
 Each team may submit up to **3 times** on the test set. Participating teams must submit a short paper describing their approach (ICMI 2026 template). Code release is strongly encouraged. All accepted papers will be published in the ACM ICMI 2026 proceedings.
 
+For full submission instructions, including the required CSV format, how to validate your predictions, and code reproducibility requirements, see [**submission_instructions/README.md**](submission_instructions/README.md).
+
 ---
 
 ## Baseline
